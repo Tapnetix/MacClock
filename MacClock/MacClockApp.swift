@@ -155,6 +155,20 @@ struct MainClockView: View {
                 customPath: newPath
             )
         }
+        .onChange(of: settings.manualLocationName) { _, _ in
+            // Reload weather when manual location changes
+            Task {
+                await weatherService.clearCache()
+                await loadWeather()
+            }
+        }
+        .onChange(of: settings.useAutoLocation) { _, _ in
+            // Reload weather when location mode changes
+            Task {
+                await weatherService.clearCache()
+                await loadWeather()
+            }
+        }
     }
 
     private func loadWeather() async {
