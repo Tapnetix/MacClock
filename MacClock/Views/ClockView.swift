@@ -9,16 +9,18 @@ struct ClockView: View {
     var body: some View {
         VStack(spacing: 8) {
             // Time display
-            HStack(alignment: .top, spacing: 4) {
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(timeString)
                     .font(.custom("DSEG7Classic-Bold", size: 96))
                     .foregroundStyle(.white)
 
                 // AM/PM and seconds stacked vertically to the right
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(amPmString)
-                        .font(.custom("DSEG7Classic-Bold", size: 32))
-                        .foregroundStyle(.white)
+                VStack(alignment: .leading, spacing: 0) {
+                    if !settings.use24Hour {
+                        Text(amPmString)
+                            .font(.custom("DSEG7Classic-Bold", size: 32))
+                            .foregroundStyle(.white)
+                    }
 
                     if settings.showSeconds {
                         Text(secondsString)
@@ -26,8 +28,7 @@ struct ClockView: View {
                             .foregroundStyle(.white.opacity(0.8))
                     }
                 }
-                .padding(.leading, 4)
-                .padding(.top, 8)
+                .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
             }
 
             // Date display
