@@ -133,14 +133,3 @@ struct MainClockView: View {
         }
     }
 }
-
-// Placeholder for SettingsView (will be implemented in Task 11)
-struct SettingsView: View {
-    var settings: AppSettings
-    var locationService: LocationService
-
-    var body: some View {
-        Text("Settings")
-            .frame(width: 300, height: 200)
-    }
-}
