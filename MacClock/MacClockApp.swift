@@ -3,14 +3,27 @@ import CoreText
 
 @main
 struct MacClockApp: App {
+    @State private var settings = AppSettings()
+    @State private var locationService = LocationService()
+    @State private var backgroundManager = BackgroundManager()
+
+    private let weatherService = WeatherService()
+
     init() {
         registerFonts()
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainClockView(
+                settings: settings,
+                weatherService: weatherService,
+                locationService: locationService,
+                backgroundManager: backgroundManager
+            )
         }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 480, height: 320)
     }
 
     private func registerFonts() {
@@ -28,10 +41,106 @@ struct MacClockApp: App {
     }
 }
 
-struct ContentView: View {
+struct MainClockView: View {
+    let settings: AppSettings
+    let weatherService: WeatherService
+    let locationService: LocationService
+    let backgroundManager: BackgroundManager
+
+    @State private var weather: WeatherData?
+    @State private var showSettings = false
+
     var body: some View {
-        Text("12:34")
-            .font(.custom("DSEG7Classic-Bold", size: 72))
-            .frame(width: 480, height: 320)
+        ZStack {
+            // Background
+            if let image = backgroundManager.currentImage {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Color.black
+            }
+
+            // Gradient overlay for readability
+            LinearGradient(
+                colors: [.black.opacity(0.3), .clear, .black.opacity(0.3)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            // Content
+            VStack {
+                // Top bar: weather + settings
+                HStack {
+                    WeatherView(weather: weather, useCelsius: settings.useCelsius)
+                    Spacer()
+                    Button {
+                        showSettings.toggle()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+
+                Spacer()
+
+                // Clock
+                ClockView(settings: settings)
+
+                Spacer()
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: settings, locationService: locationService)
+        }
+        .task {
+            await loadWeather()
+        }
+    }
+
+    private func loadWeather() async {
+        do {
+            let location: (lat: Double, lon: Double, name: String)
+
+            if settings.useAutoLocation {
+                locationService.requestPermission()
+                let clLocation = try await locationService.requestLocation()
+                let name = try await locationService.reverseGeocode(location: clLocation)
+                location = (clLocation.coordinate.latitude, clLocation.coordinate.longitude, name)
+            } else {
+                location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
+            }
+
+            weather = try await weatherService.fetchWeather(
+                latitude: location.lat,
+                longitude: location.lon,
+                locationName: location.name,
+                useCelsius: settings.useCelsius
+            )
+
+            if let weather = weather {
+                backgroundManager.updateBackground(
+                    sunrise: weather.sunrise,
+                    sunset: weather.sunset,
+                    customPath: settings.customBackgroundPath
+                )
+            }
+        } catch {
+            print("Weather error: \(error)")
+        }
+    }
+}
+
+// Placeholder for SettingsView (will be implemented in Task 11)
+struct SettingsView: View {
+    var settings: AppSettings
+    var locationService: LocationService
+
+    var body: some View {
+        Text("Settings")
+            .frame(width: 300, height: 200)
     }
 }
