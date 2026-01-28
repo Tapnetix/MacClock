@@ -96,6 +96,7 @@ struct MainClockView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings, locationService: locationService)
         }
+        .windowLevel(settings.windowLevel)
         .task {
             await loadWeather()
         }
