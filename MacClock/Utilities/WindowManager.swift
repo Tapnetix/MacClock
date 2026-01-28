@@ -10,6 +10,11 @@ struct WindowAccessor: NSViewRepresentable {
         DispatchQueue.main.async {
             if let window = view.window {
                 applyWindowLevel(window)
+
+                // Activate app and make window key so text fields can receive focus
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+
                 onWindow?(window)
             }
         }
