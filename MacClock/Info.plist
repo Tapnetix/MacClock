@@ -4,5 +4,9 @@
 <dict>
     <key>ATSApplicationFontsPath</key>
     <string>Resources/Fonts</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>MacClock needs your location to show local weather conditions.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>MacClock needs your location to show local weather conditions.</string>
 </dict>
 </plist>

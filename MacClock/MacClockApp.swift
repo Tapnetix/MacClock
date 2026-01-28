@@ -159,15 +159,31 @@ struct MainClockView: View {
 
     private func loadWeather() async {
         do {
-            let location: (lat: Double, lon: Double, name: String)
+            var location: (lat: Double, lon: Double, name: String)
 
             if settings.useAutoLocation {
                 locationService.requestPermission()
-                let clLocation = try await locationService.requestLocation()
-                let name = try await locationService.reverseGeocode(location: clLocation)
-                location = (clLocation.coordinate.latitude, clLocation.coordinate.longitude, name)
+                do {
+                    let clLocation = try await locationService.requestLocation()
+                    let name = try await locationService.reverseGeocode(location: clLocation)
+                    location = (clLocation.coordinate.latitude, clLocation.coordinate.longitude, name)
+                } catch {
+                    // Location failed - fall back to manual location if set, otherwise use default
+                    print("Location error: \(error). Falling back to manual/default location.")
+                    if !settings.manualLocationName.isEmpty {
+                        location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
+                    } else {
+                        // Default to San Francisco
+                        location = (37.7749, -122.4194, "San Francisco")
+                    }
+                }
             } else {
-                location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
+                if !settings.manualLocationName.isEmpty {
+                    location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
+                } else {
+                    // Default to San Francisco
+                    location = (37.7749, -122.4194, "San Francisco")
+                }
             }
 
             weather = try await weatherService.fetchWeather(
