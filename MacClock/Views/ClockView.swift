@@ -9,21 +9,25 @@ struct ClockView: View {
     var body: some View {
         VStack(spacing: 8) {
             // Time display
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
+            HStack(alignment: .top, spacing: 4) {
                 Text(timeString)
                     .font(.custom("DSEG7Classic-Bold", size: 96))
                     .foregroundStyle(.white)
 
-                Text(amPmString)
-                    .font(.custom("DSEG7Classic-Bold", size: 32))
-                    .foregroundStyle(.white)
-                    .padding(.leading, 8)
-            }
+                // AM/PM and seconds stacked vertically to the right
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(amPmString)
+                        .font(.custom("DSEG7Classic-Bold", size: 32))
+                        .foregroundStyle(.white)
 
-            if settings.showSeconds {
-                Text(secondsString)
-                    .font(.custom("DSEG7Classic-Bold", size: 36))
-                    .foregroundStyle(.white.opacity(0.8))
+                    if settings.showSeconds {
+                        Text(secondsString)
+                            .font(.custom("DSEG7Classic-Bold", size: 32))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+                .padding(.leading, 4)
+                .padding(.top, 8)
             }
 
             // Date display
@@ -52,7 +56,7 @@ struct ClockView: View {
 
     private var secondsString: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = ":ss"
+        formatter.dateFormat = "ss"
         return formatter.string(from: currentTime)
     }
 
