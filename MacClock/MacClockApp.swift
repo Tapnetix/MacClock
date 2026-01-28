@@ -49,6 +49,7 @@ struct MainClockView: View {
 
     @State private var weather: WeatherData?
     @State private var showSettings = false
+    @State private var weatherTimer: Timer?
 
     var body: some View {
         ZStack {
@@ -122,6 +123,14 @@ struct MainClockView: View {
         }
         .task {
             await loadWeather()
+        }
+        .onAppear {
+            weatherTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { _ in
+                Task { await loadWeather() }
+            }
+        }
+        .onDisappear {
+            weatherTimer?.invalidate()
         }
     }
 
