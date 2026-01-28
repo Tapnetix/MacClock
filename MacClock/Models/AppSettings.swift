@@ -52,6 +52,10 @@ final class AppSettings {
         didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
     }
 
+    var clockFontSize: Double {
+        didSet { defaults.set(clockFontSize, forKey: "clockFontSize") }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -83,5 +87,6 @@ final class AppSettings {
         self.manualLongitude = defaults.double(forKey: "manualLongitude")
         self.customBackgroundPath = defaults.string(forKey: "customBackgroundPath")
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
+        self.clockFontSize = defaults.object(forKey: "clockFontSize") as? Double ?? 96.0
     }
 }

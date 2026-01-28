@@ -6,25 +6,33 @@ struct ClockView: View {
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private var secondaryFontSize: CGFloat {
+        settings.clockFontSize / 3.0
+    }
+
+    private var dateFontSize: CGFloat {
+        max(14, settings.clockFontSize / 4.8)
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             // Time display
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(timeString)
-                    .font(.custom("DSEG7Classic-Bold", size: 96))
+                    .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
                     .foregroundStyle(.white)
 
                 // AM/PM and seconds stacked vertically to the right
                 VStack(alignment: .leading, spacing: 0) {
                     if !settings.use24Hour {
                         Text(amPmString)
-                            .font(.custom("DSEG7Classic-Bold", size: 32))
+                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
                             .foregroundStyle(.white)
                     }
 
                     if settings.showSeconds {
                         Text(secondsString)
-                            .font(.custom("DSEG7Classic-Bold", size: 32))
+                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
                             .foregroundStyle(.white.opacity(0.8))
                     }
                 }
@@ -33,7 +41,7 @@ struct ClockView: View {
 
             // Date display
             Text(dateString)
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: dateFontSize, weight: .medium))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
         }

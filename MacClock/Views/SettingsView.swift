@@ -21,6 +21,11 @@ struct SettingsView: View {
                     Text("°C").tag(true)
                 }
                 .pickerStyle(.segmented)
+
+                VStack(alignment: .leading) {
+                    Text("Clock Size: \(Int(settings.clockFontSize))")
+                    Slider(value: $settings.clockFontSize, in: 48...200, step: 4)
+                }
             }
 
             Section("Window") {

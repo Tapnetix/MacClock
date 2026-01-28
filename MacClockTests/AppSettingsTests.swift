@@ -9,6 +9,7 @@ import Testing
     #expect(settings.useCelsius == false)
     #expect(settings.windowLevel == .normal)
     #expect(settings.useAutoLocation == true)
+    #expect(settings.clockFontSize == 96.0)
 }
 
 @Test func settingsPersistence() {
