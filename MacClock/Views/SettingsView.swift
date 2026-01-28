@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import AppKit
 
 struct SettingsView: View {
     @Bindable var settings: AppSettings
@@ -8,6 +9,7 @@ struct SettingsView: View {
 
     @State private var citySearch = ""
     @State private var searchError: String?
+    @FocusState private var isCityFieldFocused: Bool
 
     var body: some View {
         Form {
@@ -36,9 +38,16 @@ struct SettingsView: View {
                     HStack {
                         TextField("City name", text: $citySearch)
                             .textFieldStyle(.roundedBorder)
+                            .focused($isCityFieldFocused)
 
                         Button("Search") {
                             Task { await searchCity() }
+                        }
+                    }
+                    .onAppear {
+                        // Ensure the sheet window can receive keyboard input
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NSApp.activate(ignoringOtherApps: true)
                         }
                     }
 
