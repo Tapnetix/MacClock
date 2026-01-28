@@ -1,13 +1,17 @@
 import SwiftUI
 import CoreText
+import AppKit
 
 @main
 struct MacClockApp: App {
     @State private var settings = AppSettings()
     @State private var locationService = LocationService()
     @State private var backgroundManager = BackgroundManager()
+    @State private var showSettings = false
 
     private let weatherService = WeatherService()
+
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         registerFonts()
@@ -19,11 +23,20 @@ struct MacClockApp: App {
                 settings: settings,
                 weatherService: weatherService,
                 locationService: locationService,
-                backgroundManager: backgroundManager
+                backgroundManager: backgroundManager,
+                showSettings: $showSettings
             )
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 480, height: 320)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    showSettings = true
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 
     private func registerFonts() {
@@ -41,14 +54,20 @@ struct MacClockApp: App {
     }
 }
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+}
+
 struct MainClockView: View {
     let settings: AppSettings
     let weatherService: WeatherService
     let locationService: LocationService
     let backgroundManager: BackgroundManager
+    @Binding var showSettings: Bool
 
     @State private var weather: WeatherData?
-    @State private var showSettings = false
     @State private var weatherTimer: Timer?
 
     var body: some View {
