@@ -125,12 +125,31 @@ struct MainClockView: View {
             await loadWeather()
         }
         .onAppear {
+            // Load initial background immediately with default sunrise/sunset
+            let defaultSunrise = Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
+            let defaultSunset = Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+            backgroundManager.updateBackground(
+                sunrise: defaultSunrise,
+                sunset: defaultSunset,
+                customPath: settings.customBackgroundPath
+            )
+
             weatherTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { _ in
                 Task { await loadWeather() }
             }
         }
         .onDisappear {
             weatherTimer?.invalidate()
+        }
+        .onChange(of: settings.customBackgroundPath) { _, newPath in
+            // Update background immediately when custom path changes
+            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
+            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+            backgroundManager.updateBackground(
+                sunrise: sunrise,
+                sunset: sunset,
+                customPath: newPath
+            )
         }
     }
 
