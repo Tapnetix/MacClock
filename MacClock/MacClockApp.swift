@@ -52,22 +52,25 @@ struct MainClockView: View {
     @State private var weatherTimer: Timer?
 
     var body: some View {
-        ZStack {
-            // Background
-            if let image = backgroundManager.currentImage {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Color.black
-            }
+        GeometryReader { geometry in
+            ZStack {
+                // Background - constrained to window size
+                if let image = backgroundManager.currentImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                } else {
+                    Color.black
+                }
 
-            // Gradient overlay for readability
-            LinearGradient(
-                colors: [.black.opacity(0.3), .clear, .black.opacity(0.3)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                // Gradient overlay for readability
+                LinearGradient(
+                    colors: [.black.opacity(0.3), .clear, .black.opacity(0.3)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
 
             // Content
             VStack {
@@ -93,6 +96,7 @@ struct MainClockView: View {
 
                 Spacer()
             }
+        }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings, locationService: locationService)
