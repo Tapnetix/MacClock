@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 enum WindowLevel: String, CaseIterable {
     case normal = "Normal"
@@ -49,6 +50,25 @@ final class AppSettings {
 
     var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
+    }
+
+    var windowFrame: NSRect {
+        get {
+            let x = defaults.double(forKey: "windowX")
+            let y = defaults.double(forKey: "windowY")
+            let w = defaults.double(forKey: "windowWidth")
+            let h = defaults.double(forKey: "windowHeight")
+            if w > 0 && h > 0 {
+                return NSRect(x: x, y: y, width: w, height: h)
+            }
+            return .zero
+        }
+        set {
+            defaults.set(newValue.origin.x, forKey: "windowX")
+            defaults.set(newValue.origin.y, forKey: "windowY")
+            defaults.set(newValue.width, forKey: "windowWidth")
+            defaults.set(newValue.height, forKey: "windowHeight")
+        }
     }
 
     init(defaults: UserDefaults = .standard) {

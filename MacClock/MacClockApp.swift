@@ -96,7 +96,30 @@ struct MainClockView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings, locationService: locationService)
         }
-        .windowLevel(settings.windowLevel)
+        .windowLevel(settings.windowLevel) { window in
+            // Restore saved frame
+            let savedFrame = settings.windowFrame
+            if savedFrame != .zero {
+                window.setFrame(savedFrame, display: true)
+            }
+
+            // Save frame on move/resize
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didMoveNotification,
+                object: window,
+                queue: .main
+            ) { _ in
+                settings.windowFrame = window.frame
+            }
+
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didResizeNotification,
+                object: window,
+                queue: .main
+            ) { _ in
+                settings.windowFrame = window.frame
+            }
+        }
         .task {
             await loadWeather()
         }
