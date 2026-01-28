@@ -15,7 +15,7 @@ import Testing
     let defaults = UserDefaults(suiteName: "test")!
     defaults.removePersistentDomain(forName: "test")
 
-    var settings = AppSettings(defaults: defaults)
+    let settings = AppSettings(defaults: defaults)
     settings.use24Hour = true
     settings.showSeconds = false
 
