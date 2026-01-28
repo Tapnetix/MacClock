@@ -7,7 +7,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MacClock",
-            path: "MacClock"
+            path: "MacClock",
+            exclude: ["Info.plist"],
+            resources: [
+                .copy("Resources/Fonts")
+            ]
         ),
         .testTarget(
             name: "MacClockTests",
