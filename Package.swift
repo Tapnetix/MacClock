@@ -10,6 +10,7 @@ let package = Package(
             path: "MacClock",
             exclude: ["Info.plist"],
             resources: [
+                .copy("Resources/Backgrounds"),
                 .copy("Resources/Fonts")
             ]
         ),

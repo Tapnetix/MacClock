@@ -95,9 +95,41 @@ final class BackgroundManager {
     }
 
     private func loadBundledImage(for timeOfDay: TimeOfDay) {
-        // Load from asset catalog or bundled resources
-        if let image = NSImage(named: timeOfDay.defaultImageName) {
+        let imageName = timeOfDay.defaultImageName
+
+        // Try loading from SPM bundle resources
+        // SPM uses Bundle.module for resources, but for executables we need Bundle.main
+        if let url = Bundle.main.url(forResource: imageName, withExtension: "jpg", subdirectory: "Backgrounds"),
+           let image = NSImage(contentsOf: url) {
             currentImage = image
+        } else if let url = Bundle.main.url(forResource: imageName, withExtension: "jpg"),
+                  let image = NSImage(contentsOf: url) {
+            // Fallback: try without subdirectory
+            currentImage = image
+        } else if let image = NSImage(named: imageName) {
+            // Fallback: try asset catalog
+            currentImage = image
+        } else {
+            // Final fallback: create a solid color placeholder
+            currentImage = createPlaceholderImage(for: timeOfDay)
         }
+    }
+
+    private func createPlaceholderImage(for timeOfDay: TimeOfDay) -> NSImage {
+        let color: NSColor
+        switch timeOfDay {
+        case .dawn: color = NSColor(red: 1.0, green: 0.6, blue: 0.4, alpha: 1.0)  // #FF9966
+        case .day: color = NSColor(red: 0.53, green: 0.81, blue: 0.92, alpha: 1.0) // #87CEEB
+        case .dusk: color = NSColor(red: 1.0, green: 0.4, blue: 0.2, alpha: 1.0)  // #FF6633
+        case .night: color = NSColor(red: 0.1, green: 0.1, blue: 0.44, alpha: 1.0) // #191970
+        }
+
+        let size = NSSize(width: 1920, height: 1080)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        color.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        image.unlockFocus()
+        return image
     }
 }
