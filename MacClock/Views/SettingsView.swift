@@ -1,6 +1,7 @@
 import SwiftUI
 import ServiceManagement
 import AppKit
+import EventKit
 
 struct SettingsView: View {
     @Bindable var settings: AppSettings
@@ -12,6 +13,7 @@ struct SettingsView: View {
     @FocusState private var isCityFieldFocused: Bool
     @State private var showCityPicker = false
     @State private var citySearchService = CitySearchService()
+    @State private var calendarService = CalendarService()
 
     var body: some View {
         Form {
@@ -258,6 +260,46 @@ struct SettingsView: View {
 
                     ForEach($settings.newsFeeds) { $feed in
                         Toggle(feed.name, isOn: $feed.isEnabled)
+                    }
+                }
+
+                Divider()
+
+                Toggle("Calendar", isOn: $settings.calendarEnabled)
+
+                if settings.calendarEnabled {
+                    if calendarService.authorizationStatus != .fullAccess && calendarService.authorizationStatus != .authorized {
+                        Button("Grant Calendar Access") {
+                            Task { await calendarService.requestAccess() }
+                        }
+                    } else {
+                        Toggle("Show Next Event", isOn: $settings.calendarShowCountdown)
+                        Toggle("Show Agenda Panel", isOn: $settings.calendarShowAgenda)
+
+                        if settings.calendarShowAgenda {
+                            Picker("Panel Position", selection: $settings.calendarAgendaPosition) {
+                                ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
+                                    Text(pos.rawValue).tag(pos)
+                                }
+                            }
+                        }
+
+                        Text("Calendars")
+                            .font(.headline)
+                            .padding(.top, 8)
+
+                        ForEach(calendarService.availableCalendars, id: \.calendarIdentifier) { calendar in
+                            Toggle(calendar.title, isOn: Binding(
+                                get: { settings.selectedCalendarIDs.contains(calendar.calendarIdentifier) },
+                                set: { enabled in
+                                    if enabled {
+                                        settings.selectedCalendarIDs.append(calendar.calendarIdentifier)
+                                    } else {
+                                        settings.selectedCalendarIDs.removeAll { $0 == calendar.calendarIdentifier }
+                                    }
+                                }
+                            ))
+                        }
                     }
                 }
             }

@@ -78,6 +78,9 @@ struct MainClockView: View {
     @State private var backgroundOpacity: Double = 1.0
     @State private var newsService = NewsService()
     @State private var newsItems: [NewsItem] = []
+    @State private var calendarService = CalendarService()
+    @State private var nextEvent: CalendarEvent?
+    @State private var todayEvents: [CalendarEvent] = []
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -132,6 +135,11 @@ struct MainClockView: View {
                     // Top bar: weather + settings
                     HStack {
                         WeatherView(weather: weather, useCelsius: settings.useCelsius, theme: effectiveTheme)
+
+                        if settings.calendarEnabled && settings.calendarShowCountdown {
+                            CalendarCountdownView(event: nextEvent, theme: effectiveTheme)
+                        }
+
                         Spacer()
                         Button {
                             showSettings.toggle()
@@ -162,6 +170,12 @@ struct MainClockView: View {
                 if settings.worldClocksEnabled && settings.worldClocksPosition == .side && !settings.worldClocks.isEmpty {
                     WorldClocksView(settings: settings, theme: effectiveTheme)
                         .frame(width: 120)
+                }
+
+                // Calendar Agenda (side panel)
+                if settings.calendarEnabled && settings.calendarShowAgenda && settings.calendarAgendaPosition == .side {
+                    CalendarAgendaView(events: todayEvents, theme: effectiveTheme)
+                        .frame(width: 150)
                 }
             }
             .opacity(dimManager.currentDimLevel)
@@ -227,6 +241,11 @@ struct MainClockView: View {
             if settings.newsTickerEnabled {
                 Task { await loadNews() }
             }
+
+            // Load calendar events if enabled
+            if settings.calendarEnabled {
+                loadCalendarEvents()
+            }
         }
         .onDisappear {
             weatherTimer?.invalidate()
@@ -280,6 +299,11 @@ struct MainClockView: View {
         .onChange(of: settings.newsTickerEnabled) { _, enabled in
             if enabled {
                 Task { await loadNews() }
+            }
+        }
+        .onChange(of: settings.calendarEnabled) { _, enabled in
+            if enabled {
+                loadCalendarEvents()
             }
         }
     }
@@ -388,5 +412,10 @@ struct MainClockView: View {
 
     private func loadNews() async {
         newsItems = await newsService.fetchNews(from: settings.newsFeeds)
+    }
+
+    private func loadCalendarEvents() {
+        nextEvent = calendarService.fetchNextEvent(from: settings.selectedCalendarIDs)
+        todayEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
     }
 }
