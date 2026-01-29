@@ -72,6 +72,10 @@ struct MainClockView: View {
     @State private var currentNatureImage: NSImage?
     @State private var backgroundTimer: Timer?
     @State private var weatherTimer: Timer?
+    @State private var dimManager = DimManager()
+    @State private var dimTimer: Timer?
+    @State private var previousBackgroundImage: NSImage?
+    @State private var backgroundOpacity: Double = 1.0
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -84,16 +88,30 @@ struct MainClockView: View {
         }
     }
 
+    private var effectiveTheme: ColorTheme {
+        dimManager.effectiveTheme
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background - constrained to window size
+                // Previous background (for crossfade)
+                if let prevImage = previousBackgroundImage {
+                    Image(nsImage: prevImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                }
+
+                // Current background
                 if let image = displayedBackgroundImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
+                        .opacity(backgroundOpacity)
                 } else {
                     Color.black
                 }
@@ -106,29 +124,46 @@ struct MainClockView: View {
                 )
 
             // Content
-            VStack {
-                // Top bar: weather + settings
-                HStack {
-                    WeatherView(weather: weather, useCelsius: settings.useCelsius)
-                    Spacer()
-                    Button {
-                        showSettings.toggle()
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white.opacity(0.7))
+            HStack(spacing: 0) {
+                // Main content
+                VStack {
+                    // Top bar: weather + settings
+                    HStack {
+                        WeatherView(weather: weather, useCelsius: settings.useCelsius, theme: effectiveTheme)
+                        Spacer()
+                        Button {
+                            showSettings.toggle()
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding()
+
+                    Spacer()
+
+                    // Clock
+                    ClockStyleContainer(settings: settings, theme: effectiveTheme)
+
+                    Spacer()
+
+                    // World Clocks (bottom)
+                    if settings.worldClocksEnabled && settings.worldClocksPosition == .bottom && !settings.worldClocks.isEmpty {
+                        WorldClocksView(settings: settings, theme: effectiveTheme)
+                    }
                 }
-                .padding()
+                .frame(maxWidth: .infinity)
 
-                Spacer()
-
-                // Clock
-                ClockView(settings: settings)
-
-                Spacer()
+                // World Clocks (side panel)
+                if settings.worldClocksEnabled && settings.worldClocksPosition == .side && !settings.worldClocks.isEmpty {
+                    WorldClocksView(settings: settings, theme: effectiveTheme)
+                        .frame(width: 120)
+                }
             }
+            .opacity(dimManager.currentDimLevel)
+            .animation(.easeInOut(duration: 2.0), value: dimManager.currentDimLevel)
         }
         }
         .sheet(isPresented: $showSettings) {
@@ -171,10 +206,17 @@ struct MainClockView: View {
 
             // Start background cycling timer if in nature mode
             setupBackgroundTimer()
+
+            // Setup dim manager
+            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+            dimTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+                dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+            }
         }
         .onDisappear {
             weatherTimer?.invalidate()
             backgroundTimer?.invalidate()
+            dimTimer?.invalidate()
         }
         .onChange(of: settings.backgroundMode) { _, _ in
             loadInitialBackground()
@@ -207,6 +249,18 @@ struct MainClockView: View {
                 await weatherService.clearCache()
                 await loadWeather()
             }
+        }
+        .onChange(of: settings.autoDimEnabled) { _, _ in
+            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+        }
+        .onChange(of: settings.autoDimMode) { _, _ in
+            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+        }
+        .onChange(of: settings.autoThemeEnabled) { _, _ in
+            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+        }
+        .onChange(of: settings.colorTheme) { _, _ in
+            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
         }
     }
 
@@ -283,8 +337,32 @@ struct MainClockView: View {
 
         backgroundTimer = Timer.scheduledTimer(withTimeInterval: settings.backgroundCycleInterval, repeats: true) { _ in
             Task {
-                currentNatureImage = await natureService.getNextImage()
+                let newImage = await natureService.getNextImage()
+                await MainActor.run {
+                    transitionToNewBackground(newImage)
+                }
             }
+        }
+    }
+
+    private func transitionToNewBackground(_ newImage: NSImage?) {
+        guard let newImage = newImage else { return }
+
+        // Store current as previous
+        previousBackgroundImage = currentNatureImage
+
+        // Set new image immediately but invisible
+        currentNatureImage = newImage
+        backgroundOpacity = 0.0
+
+        // Animate fade in
+        withAnimation(.easeInOut(duration: 1.5)) {
+            backgroundOpacity = 1.0
+        }
+
+        // Clear previous after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            previousBackgroundImage = nil
         }
     }
 }
