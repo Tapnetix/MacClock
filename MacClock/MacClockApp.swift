@@ -492,19 +492,26 @@ struct MainClockView: View {
     }
 
     private func loadCalendarEvents() {
-        // Local calendar events
-        nextEvent = calendarService.fetchNextEvent(from: settings.selectedCalendarIDs)
-        let allEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
+        // Local calendar events - show immediately
+        let localEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
+        todayEvents = localEvents.sorted { $0.startDate < $1.startDate }
 
-        // Fetch iCal events
+        // Update next event from local events first
+        let now = Date()
+        nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
+
+        // Fetch iCal events asynchronously and merge
+        guard !settings.iCalFeeds.isEmpty else { return }
+
         Task {
             var fetchedEvents: [CalendarEvent] = []
+            let today = Calendar.current.startOfDay(for: Date())
+            guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) else { return }
+
             for feed in settings.iCalFeeds where feed.isEnabled {
                 do {
                     let events = try await iCalService.fetchEvents(from: feed)
                     // Filter to today's events
-                    let today = Calendar.current.startOfDay(for: Date())
-                    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
                     let todayEvents = events.filter { $0.startDate >= today && $0.startDate < tomorrow }
                     fetchedEvents.append(contentsOf: todayEvents)
                 } catch {
@@ -514,14 +521,12 @@ struct MainClockView: View {
 
             await MainActor.run {
                 iCalEvents = fetchedEvents
-                // Merge and sort all events
-                todayEvents = (allEvents + iCalEvents).sorted { $0.startDate < $1.startDate }
+                // Merge local and iCal events, sorted by start time
+                todayEvents = (localEvents + fetchedEvents).sorted { $0.startDate < $1.startDate }
                 // Update next event to include iCal events
                 let now = Date()
                 nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
             }
         }
-
-        todayEvents = allEvents
     }
 }
