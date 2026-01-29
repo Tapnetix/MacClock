@@ -41,4 +41,14 @@ struct CalendarEvent: Identifiable {
         self.calendarColor = event.calendar?.cgColor
         self.isAllDay = event.isAllDay
     }
+
+    init(id: String, title: String, startDate: Date, endDate: Date, calendarTitle: String, calendarColor: CGColor?, isAllDay: Bool) {
+        self.id = id
+        self.title = title
+        self.startDate = startDate
+        self.endDate = endDate
+        self.calendarTitle = calendarTitle
+        self.calendarColor = calendarColor
+        self.isAllDay = isAllDay
+    }
 }
