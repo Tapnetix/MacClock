@@ -90,7 +90,6 @@ struct SettingsView: View {
                     case .extras:
                         ExtrasTabView(
                             settings: settings,
-                            calendarService: calendarService,
                             showAlarmPanel: $showAlarmPanel
                         )
                     }
@@ -821,57 +820,9 @@ struct EditICalFeedSheet: View {
 
 struct ExtrasTabView: View {
     @Bindable var settings: AppSettings
-    let calendarService: CalendarService
     @Binding var showAlarmPanel: Bool
 
     var body: some View {
-        SettingsSection(title: "Calendar") {
-            Toggle("Enable Calendar", isOn: $settings.calendarEnabled)
-
-            if settings.calendarEnabled {
-                if calendarService.authorizationStatus != .fullAccess && calendarService.authorizationStatus != .authorized {
-                    Button("Grant Calendar Access") {
-                        Task { await calendarService.requestAccess() }
-                    }
-                } else {
-                    Toggle("Show Next Event Countdown", isOn: $settings.calendarShowCountdown)
-                    Toggle("Show Agenda Panel", isOn: $settings.calendarShowAgenda)
-
-                    if settings.calendarShowAgenda {
-                        LabeledContent("Panel Position") {
-                            Picker("", selection: $settings.calendarAgendaPosition) {
-                                ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
-                                    Text(pos.rawValue).tag(pos)
-                                }
-                            }
-                            .labelsHidden()
-                            .frame(width: 100)
-                        }
-                    }
-
-                    if !calendarService.availableCalendars.isEmpty {
-                        Text("Calendars")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
-
-                        ForEach(calendarService.availableCalendars, id: \.calendarIdentifier) { calendar in
-                            Toggle(calendar.title, isOn: Binding(
-                                get: { settings.selectedCalendarIDs.contains(calendar.calendarIdentifier) },
-                                set: { enabled in
-                                    if enabled {
-                                        settings.selectedCalendarIDs.append(calendar.calendarIdentifier)
-                                    } else {
-                                        settings.selectedCalendarIDs.removeAll { $0 == calendar.calendarIdentifier }
-                                    }
-                                }
-                            ))
-                        }
-                    }
-                }
-            }
-        }
-
         SettingsSection(title: "Alarms & Timers") {
             Button("Open Alarms, Timer & Stopwatch") {
                 showAlarmPanel = true
