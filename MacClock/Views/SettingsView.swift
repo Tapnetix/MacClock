@@ -532,53 +532,6 @@ struct ExtrasTabView: View {
     @Binding var showAlarmPanel: Bool
 
     var body: some View {
-        SettingsSection(title: "News Ticker") {
-            Toggle("Enable News Ticker", isOn: $settings.newsTickerEnabled)
-
-            if settings.newsTickerEnabled {
-                LabeledContent("Style") {
-                    Picker("", selection: $settings.newsTickerStyle) {
-                        ForEach(NewsTickerStyle.allCases, id: \.self) { style in
-                            Text(style.rawValue).tag(style)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 100)
-                }
-
-                if settings.newsTickerStyle == .scrolling {
-                    LabeledContent("Speed") {
-                        HStack {
-                            Slider(value: $settings.newsScrollSpeed, in: 20...100, step: 10)
-                                .frame(width: 80)
-                            Text("\(Int(settings.newsScrollSpeed))")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30)
-                        }
-                    }
-                } else {
-                    LabeledContent("Rotate Every") {
-                        HStack {
-                            Slider(value: $settings.newsRotateInterval, in: 5...30, step: 5)
-                                .frame(width: 80)
-                            Text("\(Int(settings.newsRotateInterval))s")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30)
-                        }
-                    }
-                }
-
-                Text("Sources")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-
-                ForEach($settings.newsFeeds) { $feed in
-                    Toggle(feed.name, isOn: $feed.isEnabled)
-                }
-            }
-        }
-
         SettingsSection(title: "Calendar") {
             Toggle("Enable Calendar", isOn: $settings.calendarEnabled)
 
