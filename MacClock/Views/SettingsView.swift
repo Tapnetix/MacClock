@@ -634,6 +634,327 @@ struct ExtrasTabView: View {
     }
 }
 
+// MARK: - News Tab
+
+struct NewsTabView: View {
+    @Bindable var settings: AppSettings
+    @State private var feedDiscoveryService = FeedDiscoveryService()
+    @State private var searchQuery = ""
+    @State private var isSearching = false
+    @State private var searchResults: [DiscoveredFeed] = []
+    @State private var showSearchResults = false
+    @State private var showManualAdd = false
+    @State private var searchError: String?
+
+    var body: some View {
+        SettingsSection(title: "News Ticker") {
+            Toggle("Enable News Ticker", isOn: $settings.newsTickerEnabled)
+
+            if settings.newsTickerEnabled {
+                LabeledContent("Style") {
+                    Picker("", selection: $settings.newsTickerStyle) {
+                        ForEach(NewsTickerStyle.allCases, id: \.self) { style in
+                            Text(style.rawValue).tag(style)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 120)
+                }
+
+                if settings.newsTickerStyle == .scrolling {
+                    LabeledContent("Speed") {
+                        HStack {
+                            Slider(value: $settings.newsScrollSpeed, in: 20...100, step: 10)
+                                .frame(width: 100)
+                            Text("\(Int(settings.newsScrollSpeed))")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                        }
+                    }
+                } else {
+                    LabeledContent("Rotate Every") {
+                        HStack {
+                            Slider(value: $settings.newsRotateInterval, in: 5...30, step: 5)
+                                .frame(width: 100)
+                            Text("\(Int(settings.newsRotateInterval))s")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 35)
+                        }
+                    }
+                }
+            }
+        }
+
+        SettingsSection(title: "Your Feeds") {
+            // Search field
+            HStack {
+                TextField("Search feeds or enter URL...", text: $searchQuery)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        Task { await performSearch() }
+                    }
+
+                Button {
+                    Task { await performSearch() }
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .disabled(searchQuery.isEmpty || isSearching)
+            }
+
+            if let error = searchError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            // Feed list
+            ForEach($settings.newsFeeds) { $feed in
+                FeedRow(feed: $feed, canDelete: !feed.isBuiltIn) {
+                    settings.newsFeeds.removeAll { $0.id == feed.id }
+                }
+            }
+
+            Button {
+                showManualAdd = true
+            } label: {
+                Label("Add Feed Manually", systemImage: "plus.circle")
+            }
+            .padding(.top, 4)
+        }
+        .sheet(isPresented: $showSearchResults) {
+            FeedSearchResultsSheet(
+                results: searchResults,
+                isPresented: $showSearchResults,
+                onAdd: { feed in
+                    addFeed(feed)
+                }
+            )
+        }
+        .sheet(isPresented: $showManualAdd) {
+            ManualFeedSheet(isPresented: $showManualAdd) { name, url in
+                let feed = NewsFeed(
+                    id: UUID(),
+                    name: name,
+                    url: url,
+                    isEnabled: true,
+                    isBuiltIn: false
+                )
+                settings.newsFeeds.append(feed)
+            }
+        }
+    }
+
+    private func performSearch() async {
+        guard !searchQuery.isEmpty else { return }
+
+        isSearching = true
+        searchError = nil
+
+        do {
+            if feedDiscoveryService.isURL(searchQuery) {
+                searchResults = try await feedDiscoveryService.discoverFeeds(from: searchQuery)
+            } else {
+                searchResults = try await feedDiscoveryService.searchFeeds(query: searchQuery)
+            }
+
+            if searchResults.isEmpty {
+                searchError = "No feeds found"
+            } else {
+                showSearchResults = true
+            }
+        } catch {
+            searchError = error.localizedDescription
+        }
+
+        isSearching = false
+    }
+
+    private func addFeed(_ discovered: DiscoveredFeed) {
+        let feed = discovered.toNewsFeed()
+        // Avoid duplicates
+        if !settings.newsFeeds.contains(where: { $0.url == feed.url }) {
+            settings.newsFeeds.append(feed)
+        }
+    }
+}
+
+// MARK: - Feed Row
+
+struct FeedRow: View {
+    @Binding var feed: NewsFeed
+    let canDelete: Bool
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack {
+            Toggle("", isOn: $feed.isEnabled)
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+
+            Text(feed.name)
+
+            Spacer()
+
+            Text(feed.isBuiltIn ? "Built-in" : "Custom")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.2))
+                .cornerRadius(4)
+
+            if canDelete {
+                Button {
+                    onDelete()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Search Results Sheet
+
+struct FeedSearchResultsSheet: View {
+    let results: [DiscoveredFeed]
+    @Binding var isPresented: Bool
+    let onAdd: (DiscoveredFeed) -> Void
+
+    @State private var addedFeedIDs: Set<UUID> = []
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Found \(results.count) feed\(results.count == 1 ? "" : "s")")
+                    .font(.headline)
+                Spacer()
+                Button("Done") {
+                    isPresented = false
+                }
+            }
+            .padding()
+
+            Divider()
+
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(results) { feed in
+                        FeedSearchResultRow(
+                            feed: feed,
+                            isAdded: addedFeedIDs.contains(feed.id),
+                            onAdd: {
+                                onAdd(feed)
+                                addedFeedIDs.insert(feed.id)
+                            }
+                        )
+                    }
+                }
+                .padding()
+            }
+        }
+        .frame(width: 400, height: 350)
+    }
+}
+
+struct FeedSearchResultRow: View {
+    let feed: DiscoveredFeed
+    let isAdded: Bool
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feed.title)
+                    .font(.headline)
+
+                HStack(spacing: 8) {
+                    if let website = feed.websiteURL {
+                        Text(URL(string: website)?.host ?? website)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let count = feed.subscriberCount, count > 0 {
+                        Text(formatSubscribers(count))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let desc = feed.description, !desc.isEmpty {
+                    Text(desc)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer()
+
+            Button(isAdded ? "Added" : "Add") {
+                onAdd()
+            }
+            .disabled(isAdded)
+            .buttonStyle(.bordered)
+        }
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func formatSubscribers(_ count: Int) -> String {
+        if count >= 1_000_000 {
+            return String(format: "%.1fM readers", Double(count) / 1_000_000)
+        } else if count >= 1_000 {
+            return String(format: "%.0fK readers", Double(count) / 1_000)
+        } else {
+            return "\(count) readers"
+        }
+    }
+}
+
+// MARK: - Manual Feed Sheet
+
+struct ManualFeedSheet: View {
+    @Binding var isPresented: Bool
+    let onAdd: (String, String) -> Void
+
+    @State private var name = ""
+    @State private var url = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Add Feed Manually")
+                .font(.headline)
+
+            TextField("Feed Name", text: $name)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("RSS Feed URL", text: $url)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Add") {
+                    onAdd(name, url)
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(name.isEmpty || url.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 300)
+    }
+}
+
 // MARK: - Settings Section
 
 struct SettingsSection<Content: View>: View {
