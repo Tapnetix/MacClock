@@ -32,7 +32,7 @@ struct WorldClocksView: View {
     }
 
     private var sidePanelLayout: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .trailing, spacing: 12) {
             ForEach(settings.worldClocks.prefix(5)) { clock in
                 WorldClockItem(
                     clock: clock,
@@ -62,33 +62,64 @@ struct WorldClockItem: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(alignment: compact ? .center : .leading, spacing: 2) {
+        Group {
+            if compact {
+                compactLayout
+            } else {
+                expandedLayout
+            }
+        }
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
+    }
+
+    private var compactLayout: some View {
+        VStack(alignment: .center, spacing: 2) {
             Text(clock.cityName.uppercased())
-                .font(.system(size: compact ? 10 : 12, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(theme.accentColor)
 
             HStack(spacing: 4) {
                 Text(clock.currentTimeString(use24Hour: use24Hour))
-                    .font(.system(size: compact ? 14 : 18, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
                     .foregroundStyle(theme.primaryColor)
 
                 if showDayDiff && clock.dayDifferenceFromLocal != 0 {
                     Text(clock.dayDifferenceFromLocal > 0 ? "+1" : "-1")
-                        .font(.system(size: compact ? 8 : 10))
+                        .font(.system(size: 8))
+                        .foregroundStyle(theme.accentColor.opacity(0.7))
+                }
+            }
+        }
+        .frame(minWidth: 70)
+    }
+
+    private var expandedLayout: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(clock.cityName.uppercased())
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(theme.accentColor)
+
+            HStack(spacing: 4) {
+                Text(clock.currentTimeString(use24Hour: use24Hour))
+                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(theme.primaryColor)
+
+                if showDayDiff && clock.dayDifferenceFromLocal != 0 {
+                    Text(clock.dayDifferenceFromLocal > 0 ? "+1" : "-1")
+                        .font(.system(size: 10))
                         .foregroundStyle(theme.accentColor.opacity(0.7))
                 }
             }
 
-            if showAbbreviation && !compact {
+            if showAbbreviation {
                 Text(clock.timezoneAbbreviation)
                     .font(.system(size: 10))
                     .foregroundStyle(theme.accentColor.opacity(0.6))
             }
         }
-        .frame(minWidth: compact ? 70 : 100)
-        .onReceive(timer) { _ in
-            currentTime = Date()
-        }
+        .frame(minWidth: 100, alignment: .trailing)
     }
 }
 
