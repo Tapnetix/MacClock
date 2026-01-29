@@ -34,6 +34,11 @@ struct SettingsView: View {
                         Text(level.rawValue).tag(level)
                     }
                 }
+
+                VStack(alignment: .leading) {
+                    Text("Opacity: \(Int(settings.windowOpacity * 100))%")
+                    Slider(value: $settings.windowOpacity, in: 0.2...1.0, step: 0.1)
+                }
             }
 
             Section("Location") {
@@ -70,19 +75,36 @@ struct SettingsView: View {
             }
 
             Section("Background") {
-                HStack {
-                    Text(settings.customBackgroundPath ?? "Default (time-based)")
-                        .foregroundStyle(settings.customBackgroundPath == nil ? .secondary : .primary)
-
-                    Spacer()
-
-                    Button("Choose...") {
-                        selectCustomBackground()
+                Picker("Mode", selection: $settings.backgroundMode) {
+                    ForEach(BackgroundMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
                     }
+                }
 
-                    if settings.customBackgroundPath != nil {
-                        Button("Reset") {
-                            settings.customBackgroundPath = nil
+                if settings.backgroundMode == .nature {
+                    VStack(alignment: .leading) {
+                        Text("Cycle every: \(Int(settings.backgroundCycleInterval))s")
+                        Slider(value: $settings.backgroundCycleInterval, in: 10...300, step: 10)
+                    }
+                }
+
+                if settings.backgroundMode == .custom {
+                    HStack {
+                        Text(settings.customBackgroundPath ?? "None selected")
+                            .foregroundStyle(settings.customBackgroundPath == nil ? .secondary : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Spacer()
+
+                        Button("Choose...") {
+                            selectCustomBackground()
+                        }
+
+                        if settings.customBackgroundPath != nil {
+                            Button("Clear") {
+                                settings.customBackgroundPath = nil
+                            }
                         }
                     }
                 }

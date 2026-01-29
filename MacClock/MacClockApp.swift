@@ -68,13 +68,27 @@ struct MainClockView: View {
     @Binding var showSettings: Bool
 
     @State private var weather: WeatherData?
+    @State private var natureService = NatureBackgroundService()
+    @State private var currentNatureImage: NSImage?
+    @State private var backgroundTimer: Timer?
     @State private var weatherTimer: Timer?
+
+    private var displayedBackgroundImage: NSImage? {
+        switch settings.backgroundMode {
+        case .nature:
+            return currentNatureImage
+        case .custom:
+            return backgroundManager.currentImage
+        case .timeOfDay:
+            return backgroundManager.currentImage
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Background - constrained to window size
-                if let image = backgroundManager.currentImage {
+                if let image = displayedBackgroundImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -120,7 +134,7 @@ struct MainClockView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings, locationService: locationService)
         }
-        .windowLevel(settings.windowLevel) { window in
+        .windowLevel(settings.windowLevel, opacity: settings.windowOpacity) { window in
             // Restore saved frame
             let savedFrame = settings.windowFrame
             if savedFrame != .zero {
@@ -148,31 +162,37 @@ struct MainClockView: View {
             await loadWeather()
         }
         .onAppear {
-            // Load initial background immediately with default sunrise/sunset
-            let defaultSunrise = Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
-            let defaultSunset = Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
-            backgroundManager.updateBackground(
-                sunrise: defaultSunrise,
-                sunset: defaultSunset,
-                customPath: settings.customBackgroundPath
-            )
+            // Load initial background
+            loadInitialBackground()
 
             weatherTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { _ in
                 Task { await loadWeather() }
             }
+
+            // Start background cycling timer if in nature mode
+            setupBackgroundTimer()
         }
         .onDisappear {
             weatherTimer?.invalidate()
+            backgroundTimer?.invalidate()
+        }
+        .onChange(of: settings.backgroundMode) { _, _ in
+            loadInitialBackground()
+            setupBackgroundTimer()
+        }
+        .onChange(of: settings.backgroundCycleInterval) { _, _ in
+            setupBackgroundTimer()
         }
         .onChange(of: settings.customBackgroundPath) { _, newPath in
-            // Update background immediately when custom path changes
-            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
-            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
-            backgroundManager.updateBackground(
-                sunrise: sunrise,
-                sunset: sunset,
-                customPath: newPath
-            )
+            if settings.backgroundMode == .custom {
+                let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
+                let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+                backgroundManager.updateBackground(
+                    sunrise: sunrise,
+                    sunset: sunset,
+                    customPath: newPath
+                )
+            }
         }
         .onChange(of: settings.manualLocationName) { _, _ in
             // Reload weather when manual location changes
@@ -235,6 +255,36 @@ struct MainClockView: View {
             }
         } catch {
             print("Weather error: \(error)")
+        }
+    }
+
+    private func loadInitialBackground() {
+        switch settings.backgroundMode {
+        case .nature:
+            Task {
+                currentNatureImage = await natureService.getNextImage()
+            }
+        case .timeOfDay, .custom:
+            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
+            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+            backgroundManager.updateBackground(
+                sunrise: sunrise,
+                sunset: sunset,
+                customPath: settings.backgroundMode == .custom ? settings.customBackgroundPath : nil
+            )
+        }
+    }
+
+    private func setupBackgroundTimer() {
+        backgroundTimer?.invalidate()
+        backgroundTimer = nil
+
+        guard settings.backgroundMode == .nature else { return }
+
+        backgroundTimer = Timer.scheduledTimer(withTimeInterval: settings.backgroundCycleInterval, repeats: true) { _ in
+            Task {
+                currentNatureImage = await natureService.getNextImage()
+            }
         }
     }
 }

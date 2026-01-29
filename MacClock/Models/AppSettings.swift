@@ -8,6 +8,12 @@ enum WindowLevel: String, CaseIterable {
     case desktop = "Desktop"
 }
 
+enum BackgroundMode: String, CaseIterable {
+    case timeOfDay = "Time of Day"
+    case nature = "Nature Photos"
+    case custom = "Custom"
+}
+
 @Observable
 final class AppSettings {
     private let defaults: UserDefaults
@@ -56,6 +62,18 @@ final class AppSettings {
         didSet { defaults.set(clockFontSize, forKey: "clockFontSize") }
     }
 
+    var backgroundMode: BackgroundMode {
+        didSet { defaults.set(backgroundMode.rawValue, forKey: "backgroundMode") }
+    }
+
+    var backgroundCycleInterval: Double {
+        didSet { defaults.set(backgroundCycleInterval, forKey: "backgroundCycleInterval") }
+    }
+
+    var windowOpacity: Double {
+        didSet { defaults.set(windowOpacity, forKey: "windowOpacity") }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -88,5 +106,8 @@ final class AppSettings {
         self.customBackgroundPath = defaults.string(forKey: "customBackgroundPath")
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.clockFontSize = defaults.object(forKey: "clockFontSize") as? Double ?? 96.0
+        self.backgroundMode = BackgroundMode(rawValue: defaults.string(forKey: "backgroundMode") ?? "") ?? .timeOfDay
+        self.backgroundCycleInterval = defaults.object(forKey: "backgroundCycleInterval") as? Double ?? 60.0
+        self.windowOpacity = defaults.object(forKey: "windowOpacity") as? Double ?? 1.0
     }
 }
