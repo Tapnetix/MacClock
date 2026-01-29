@@ -202,6 +202,26 @@ final class AppSettings {
         didSet { defaults.set(newsRotateInterval, forKey: "newsRotateInterval") }
     }
 
+    var calendarEnabled: Bool {
+        didSet { defaults.set(calendarEnabled, forKey: "calendarEnabled") }
+    }
+
+    var calendarShowCountdown: Bool {
+        didSet { defaults.set(calendarShowCountdown, forKey: "calendarShowCountdown") }
+    }
+
+    var calendarShowAgenda: Bool {
+        didSet { defaults.set(calendarShowAgenda, forKey: "calendarShowAgenda") }
+    }
+
+    var calendarAgendaPosition: WorldClocksPosition {
+        didSet { defaults.set(calendarAgendaPosition.rawValue, forKey: "calendarAgendaPosition") }
+    }
+
+    var selectedCalendarIDs: [String] {
+        didSet { defaults.set(selectedCalendarIDs, forKey: "selectedCalendarIDs") }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -274,5 +294,10 @@ final class AppSettings {
         self.newsRefreshInterval = defaults.object(forKey: "newsRefreshInterval") as? Double ?? 15.0
         self.newsScrollSpeed = defaults.object(forKey: "newsScrollSpeed") as? Double ?? 50.0
         self.newsRotateInterval = defaults.object(forKey: "newsRotateInterval") as? Double ?? 10.0
+        self.calendarEnabled = defaults.bool(forKey: "calendarEnabled")
+        self.calendarShowCountdown = defaults.object(forKey: "calendarShowCountdown") as? Bool ?? true
+        self.calendarShowAgenda = defaults.bool(forKey: "calendarShowAgenda")
+        self.calendarAgendaPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "calendarAgendaPosition") ?? "") ?? .side
+        self.selectedCalendarIDs = defaults.stringArray(forKey: "selectedCalendarIDs") ?? []
     }
 }
