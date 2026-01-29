@@ -1,0 +1,117 @@
+import SwiftUI
+
+struct WorldClocksView: View {
+    let settings: AppSettings
+    let theme: ColorTheme
+
+    var body: some View {
+        Group {
+            if settings.worldClocksPosition == .bottom {
+                bottomBarLayout
+            } else {
+                sidePanelLayout
+            }
+        }
+    }
+
+    private var bottomBarLayout: some View {
+        HStack(spacing: 16) {
+            ForEach(settings.worldClocks.prefix(3)) { clock in
+                WorldClockItem(
+                    clock: clock,
+                    theme: theme,
+                    use24Hour: settings.use24Hour,
+                    showAbbreviation: settings.showTimezoneAbbreviation,
+                    showDayDiff: settings.showDayDifference,
+                    compact: true
+                )
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private var sidePanelLayout: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(settings.worldClocks.prefix(5)) { clock in
+                WorldClockItem(
+                    clock: clock,
+                    theme: theme,
+                    use24Hour: settings.use24Hour,
+                    showAbbreviation: settings.showTimezoneAbbreviation,
+                    showDayDiff: settings.showDayDifference,
+                    compact: false
+                )
+            }
+        }
+        .padding()
+        .background(Color.black.opacity(0.3))
+        .cornerRadius(8)
+    }
+}
+
+struct WorldClockItem: View {
+    let clock: WorldClock
+    let theme: ColorTheme
+    let use24Hour: Bool
+    let showAbbreviation: Bool
+    let showDayDiff: Bool
+    let compact: Bool
+
+    @State private var currentTime = Date()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(alignment: compact ? .center : .leading, spacing: 2) {
+            Text(clock.cityName.uppercased())
+                .font(.system(size: compact ? 10 : 12, weight: .medium))
+                .foregroundStyle(theme.accentColor)
+
+            HStack(spacing: 4) {
+                Text(clock.currentTimeString(use24Hour: use24Hour))
+                    .font(.system(size: compact ? 14 : 18, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(theme.primaryColor)
+
+                if showDayDiff && clock.dayDifferenceFromLocal != 0 {
+                    Text(clock.dayDifferenceFromLocal > 0 ? "+1" : "-1")
+                        .font(.system(size: compact ? 8 : 10))
+                        .foregroundStyle(theme.accentColor.opacity(0.7))
+                }
+            }
+
+            if showAbbreviation && !compact {
+                Text(clock.timezoneAbbreviation)
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.accentColor.opacity(0.6))
+            }
+        }
+        .frame(minWidth: compact ? 70 : 100)
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
+    }
+}
+
+#Preview("Bottom Bar") {
+    let settings = AppSettings()
+    settings.worldClocks = [
+        WorldClock(id: UUID(), cityName: "New York", timezoneIdentifier: "America/New_York"),
+        WorldClock(id: UUID(), cityName: "London", timezoneIdentifier: "Europe/London"),
+        WorldClock(id: UUID(), cityName: "Tokyo", timezoneIdentifier: "Asia/Tokyo")
+    ]
+    settings.worldClocksPosition = .bottom
+    return WorldClocksView(settings: settings, theme: .classicWhite)
+        .background(.black)
+}
+
+#Preview("Side Panel") {
+    let settings = AppSettings()
+    settings.worldClocks = [
+        WorldClock(id: UUID(), cityName: "New York", timezoneIdentifier: "America/New_York"),
+        WorldClock(id: UUID(), cityName: "London", timezoneIdentifier: "Europe/London"),
+        WorldClock(id: UUID(), cityName: "Tokyo", timezoneIdentifier: "Asia/Tokyo")
+    ]
+    settings.worldClocksPosition = .side
+    return WorldClocksView(settings: settings, theme: .classicWhite)
+        .background(.black)
+}
