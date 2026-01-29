@@ -12,6 +12,24 @@ struct AlarmPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Header with close button
+            HStack {
+                Text("Alarms & Timers")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
             // Tab bar
             HStack(spacing: 0) {
                 TabButton(title: "Alarms", isSelected: selectedTab == 0) { selectedTab = 0 }
@@ -19,7 +37,6 @@ struct AlarmPanelView: View {
                 TabButton(title: "Stopwatch", isSelected: selectedTab == 2) { selectedTab = 2 }
             }
             .padding(.horizontal)
-            .padding(.top, 8)
 
             Divider()
 
@@ -226,24 +243,66 @@ struct AlarmEditView: View {
             Text(alarm == nil ? "Add Alarm" : "Edit Alarm")
                 .font(.headline)
 
-            // Time picker
-            HStack {
-                Picker("Hour", selection: $selectedHour) {
-                    ForEach(0..<24, id: \.self) { hour in
-                        Text("\(hour)").tag(hour)
+            // Time display with steppers
+            HStack(spacing: 8) {
+                VStack {
+                    Text("Hour")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Button {
+                            selectedHour = (selectedHour - 1 + 24) % 24
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 24))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text(String(format: "%02d", selectedHour))
+                            .font(.system(size: 32, weight: .medium, design: .monospaced))
+                            .frame(width: 50)
+
+                        Button {
+                            selectedHour = (selectedHour + 1) % 24
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 24))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .frame(width: 80)
 
                 Text(":")
+                    .font(.system(size: 32, weight: .medium, design: .monospaced))
 
-                Picker("Minute", selection: $selectedMinute) {
-                    ForEach(0..<60, id: \.self) { minute in
-                        Text(String(format: "%02d", minute)).tag(minute)
+                VStack {
+                    Text("Minute")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Button {
+                            selectedMinute = (selectedMinute - 1 + 60) % 60
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 24))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text(String(format: "%02d", selectedMinute))
+                            .font(.system(size: 32, weight: .medium, design: .monospaced))
+                            .frame(width: 50)
+
+                        Button {
+                            selectedMinute = (selectedMinute + 1) % 60
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 24))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .frame(width: 80)
             }
+            .padding(.vertical, 8)
 
             TextField("Label (optional)", text: $label)
                 .textFieldStyle(.roundedBorder)
