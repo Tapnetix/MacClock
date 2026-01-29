@@ -76,6 +76,8 @@ struct MainClockView: View {
     @State private var dimTimer: Timer?
     @State private var previousBackgroundImage: NSImage?
     @State private var backgroundOpacity: Double = 1.0
+    @State private var newsService = NewsService()
+    @State private var newsItems: [NewsItem] = []
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -164,6 +166,14 @@ struct MainClockView: View {
             }
             .opacity(dimManager.currentDimLevel)
             .animation(.easeInOut(duration: 2.0), value: dimManager.currentDimLevel)
+
+                // News Ticker
+                if settings.newsTickerEnabled && !newsItems.isEmpty {
+                    VStack {
+                        Spacer()
+                        NewsTickerView(settings: settings, theme: effectiveTheme, newsItems: newsItems)
+                    }
+                }
         }
         }
         .sheet(isPresented: $showSettings) {
@@ -211,6 +221,11 @@ struct MainClockView: View {
             dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
             dimTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
                 dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+            }
+
+            // Load news if enabled
+            if settings.newsTickerEnabled {
+                Task { await loadNews() }
             }
         }
         .onDisappear {
@@ -261,6 +276,11 @@ struct MainClockView: View {
         }
         .onChange(of: settings.colorTheme) { _, _ in
             dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
+        }
+        .onChange(of: settings.newsTickerEnabled) { _, enabled in
+            if enabled {
+                Task { await loadNews() }
+            }
         }
     }
 
@@ -364,5 +384,9 @@ struct MainClockView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             previousBackgroundImage = nil
         }
+    }
+
+    private func loadNews() async {
+        newsItems = await newsService.fetchNews(from: settings.newsFeeds)
     }
 }

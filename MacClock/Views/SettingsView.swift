@@ -228,6 +228,38 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                Divider()
+
+                Toggle("News Ticker", isOn: $settings.newsTickerEnabled)
+
+                if settings.newsTickerEnabled {
+                    Picker("Style", selection: $settings.newsTickerStyle) {
+                        ForEach(NewsTickerStyle.allCases, id: \.self) { style in
+                            Text(style.rawValue).tag(style)
+                        }
+                    }
+
+                    if settings.newsTickerStyle == .scrolling {
+                        VStack(alignment: .leading) {
+                            Text("Scroll Speed: \(Int(settings.newsScrollSpeed))")
+                            Slider(value: $settings.newsScrollSpeed, in: 20...100, step: 10)
+                        }
+                    } else {
+                        VStack(alignment: .leading) {
+                            Text("Rotate Every: \(Int(settings.newsRotateInterval))s")
+                            Slider(value: $settings.newsRotateInterval, in: 5...30, step: 5)
+                        }
+                    }
+
+                    Text("News Sources")
+                        .font(.headline)
+                        .padding(.top, 8)
+
+                    ForEach($settings.newsFeeds) { $feed in
+                        Toggle(feed.name, isOn: $feed.isEnabled)
+                    }
+                }
             }
 
             Section("System") {
