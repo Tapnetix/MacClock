@@ -31,6 +31,11 @@ enum WorldClocksPosition: String, CaseIterable {
     case side = "Side Panel"
 }
 
+enum NewsTickerStyle: String, CaseIterable {
+    case scrolling = "Scrolling"
+    case rotating = "Rotating"
+}
+
 @Observable
 final class AppSettings {
     private let defaults: UserDefaults
@@ -169,6 +174,34 @@ final class AppSettings {
         didSet { defaults.set(showDayDifference, forKey: "showDayDifference") }
     }
 
+    var newsTickerEnabled: Bool {
+        didSet { defaults.set(newsTickerEnabled, forKey: "newsTickerEnabled") }
+    }
+
+    var newsTickerStyle: NewsTickerStyle {
+        didSet { defaults.set(newsTickerStyle.rawValue, forKey: "newsTickerStyle") }
+    }
+
+    var newsFeeds: [NewsFeed] {
+        didSet {
+            if let data = try? JSONEncoder().encode(newsFeeds) {
+                defaults.set(data, forKey: "newsFeeds")
+            }
+        }
+    }
+
+    var newsRefreshInterval: Double {
+        didSet { defaults.set(newsRefreshInterval, forKey: "newsRefreshInterval") }
+    }
+
+    var newsScrollSpeed: Double {
+        didSet { defaults.set(newsScrollSpeed, forKey: "newsScrollSpeed") }
+    }
+
+    var newsRotateInterval: Double {
+        didSet { defaults.set(newsRotateInterval, forKey: "newsRotateInterval") }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -230,5 +263,16 @@ final class AppSettings {
         }
         self.showTimezoneAbbreviation = defaults.object(forKey: "showTimezoneAbbreviation") as? Bool ?? true
         self.showDayDifference = defaults.object(forKey: "showDayDifference") as? Bool ?? true
+        self.newsTickerEnabled = defaults.bool(forKey: "newsTickerEnabled")
+        self.newsTickerStyle = NewsTickerStyle(rawValue: defaults.string(forKey: "newsTickerStyle") ?? "") ?? .scrolling
+        if let data = defaults.data(forKey: "newsFeeds"),
+           let feeds = try? JSONDecoder().decode([NewsFeed].self, from: data) {
+            self.newsFeeds = feeds
+        } else {
+            self.newsFeeds = NewsFeed.builtInFeeds
+        }
+        self.newsRefreshInterval = defaults.object(forKey: "newsRefreshInterval") as? Double ?? 15.0
+        self.newsScrollSpeed = defaults.object(forKey: "newsScrollSpeed") as? Double ?? 50.0
+        self.newsRotateInterval = defaults.object(forKey: "newsRotateInterval") as? Double ?? 10.0
     }
 }
