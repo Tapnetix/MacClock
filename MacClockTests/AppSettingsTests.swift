@@ -24,3 +24,20 @@ import Testing
     #expect(reloaded.use24Hour == true)
     #expect(reloaded.showSeconds == false)
 }
+
+@Test("Theme defaults to classic white")
+func themeDefault() {
+    let defaults = UserDefaults(suiteName: "test-theme")!
+    defaults.removePersistentDomain(forName: "test-theme")
+    let settings = AppSettings(defaults: defaults)
+    #expect(settings.colorTheme == .classicWhite)
+}
+
+@Test("Theme persists to UserDefaults")
+func themePersistence() {
+    let defaults = UserDefaults(suiteName: "test-theme-persist")!
+    defaults.removePersistentDomain(forName: "test-theme-persist")
+    let settings = AppSettings(defaults: defaults)
+    settings.colorTheme = .neonBlue
+    #expect(defaults.string(forKey: "colorTheme") == "Neon Blue")
+}

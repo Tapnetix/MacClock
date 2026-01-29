@@ -74,6 +74,10 @@ final class AppSettings {
         didSet { defaults.set(windowOpacity, forKey: "windowOpacity") }
     }
 
+    var colorTheme: ColorTheme {
+        didSet { defaults.set(colorTheme.rawValue, forKey: "colorTheme") }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -109,5 +113,6 @@ final class AppSettings {
         self.backgroundMode = BackgroundMode(rawValue: defaults.string(forKey: "backgroundMode") ?? "") ?? .timeOfDay
         self.backgroundCycleInterval = defaults.object(forKey: "backgroundCycleInterval") as? Double ?? 60.0
         self.windowOpacity = defaults.object(forKey: "windowOpacity") as? Double ?? 1.0
+        self.colorTheme = ColorTheme(rawValue: defaults.string(forKey: "colorTheme") ?? "") ?? .classicWhite
     }
 }
