@@ -98,21 +98,21 @@ struct WorldClockItem: View {
 
     private var expandedLayout: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Text(clock.cityName.uppercased())
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(theme.accentColor)
-
-            HStack(spacing: 4) {
-                Text(clock.currentTimeString(use24Hour: use24Hour))
-                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(theme.primaryColor)
+            HStack(spacing: 2) {
+                Text(clock.cityName.uppercased())
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(theme.accentColor)
 
                 if showDayDiff && clock.dayDifferenceFromLocal != 0 {
                     Text(clock.dayDifferenceFromLocal > 0 ? "+1" : "-1")
-                        .font(.system(size: 10))
+                        .font(.system(size: 9))
                         .foregroundStyle(theme.accentColor.opacity(0.7))
                 }
             }
+
+            Text(clock.currentTimeString(use24Hour: use24Hour))
+                .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                .foregroundStyle(theme.primaryColor)
 
             if showAbbreviation {
                 Text(clock.timezoneAbbreviation)
@@ -120,7 +120,6 @@ struct WorldClockItem: View {
                     .foregroundStyle(theme.accentColor.opacity(0.6))
             }
         }
-        .frame(alignment: .trailing)
     }
 }
 
