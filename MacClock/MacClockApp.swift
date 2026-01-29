@@ -134,7 +134,7 @@ struct MainClockView: View {
             HStack(spacing: 0) {
                 // Main content
                 VStack {
-                    // Top bar: weather + settings
+                    // Top bar: weather + calendar countdown
                     HStack {
                         WeatherView(weather: weather, useCelsius: settings.useCelsius, theme: effectiveTheme)
 
@@ -143,22 +143,6 @@ struct MainClockView: View {
                         }
 
                         Spacer()
-                        Button {
-                            showAlarmPanel = true
-                        } label: {
-                            Image(systemName: "alarm.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(effectiveTheme.primaryColor.opacity(0.7))
-                        }
-                        .buttonStyle(.plain)
-                        Button {
-                            showSettings.toggle()
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.white.opacity(0.7))
-                        }
-                        .buttonStyle(.plain)
                     }
                     .padding()
 
@@ -190,6 +174,31 @@ struct MainClockView: View {
             }
             .opacity(dimManager.currentDimLevel)
             .animation(.easeInOut(duration: 2.0), value: dimManager.currentDimLevel)
+
+                // Settings and alarm buttons (top-right corner)
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            showAlarmPanel = true
+                        } label: {
+                            Image(systemName: "alarm.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(effectiveTheme.primaryColor.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            showSettings.toggle()
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding()
+                    Spacer()
+                }
 
                 // News Ticker
                 if settings.newsTickerEnabled && !newsItems.isEmpty {
