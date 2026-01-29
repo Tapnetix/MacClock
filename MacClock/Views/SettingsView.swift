@@ -528,6 +528,295 @@ struct WorldClocksTabView: View {
     }
 }
 
+// MARK: - Calendar Tab
+
+struct CalendarTabView: View {
+    @Bindable var settings: AppSettings
+    let calendarService: CalendarService
+    @State private var showAddFeed = false
+    @State private var editingFeed: ICalFeed?
+
+    var body: some View {
+        SettingsSection(title: "Display") {
+            Toggle("Show Next Event Countdown", isOn: $settings.calendarShowCountdown)
+            Toggle("Show Agenda Panel", isOn: $settings.calendarShowAgenda)
+
+            if settings.calendarShowAgenda {
+                LabeledContent("Panel Position") {
+                    Picker("", selection: $settings.calendarAgendaPosition) {
+                        ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
+                            Text(pos.rawValue).tag(pos)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 120)
+                }
+            }
+        }
+
+        SettingsSection(title: "Local Calendars") {
+            if calendarService.authorizationStatus != .fullAccess && calendarService.authorizationStatus != .authorized {
+                Button("Grant Calendar Access") {
+                    Task { await calendarService.requestAccess() }
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text("Allow access to show events from your Mac's calendars")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if calendarService.availableCalendars.isEmpty {
+                Text("No calendars found")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(calendarService.availableCalendars, id: \.calendarIdentifier) { calendar in
+                    HStack {
+                        Circle()
+                            .fill(Color(cgColor: calendar.cgColor ?? CGColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)))
+                            .frame(width: 10, height: 10)
+
+                        Toggle(calendar.title, isOn: Binding(
+                            get: { settings.selectedCalendarIDs.contains(calendar.calendarIdentifier) },
+                            set: { enabled in
+                                if enabled {
+                                    settings.selectedCalendarIDs.append(calendar.calendarIdentifier)
+                                } else {
+                                    settings.selectedCalendarIDs.removeAll { $0 == calendar.calendarIdentifier }
+                                }
+                            }
+                        ))
+                    }
+                }
+            }
+        }
+
+        SettingsSection(title: "Online Calendars (iCal)") {
+            if settings.iCalFeeds.isEmpty {
+                Text("No online calendars added")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach($settings.iCalFeeds) { $feed in
+                    ICalFeedRow(feed: $feed, onEdit: {
+                        editingFeed = feed
+                    }, onDelete: {
+                        settings.iCalFeeds.removeAll { $0.id == feed.id }
+                    })
+                }
+            }
+
+            Button {
+                showAddFeed = true
+            } label: {
+                Label("Add iCal URL", systemImage: "plus.circle")
+            }
+            .padding(.top, 4)
+        }
+        .sheet(isPresented: $showAddFeed) {
+            AddICalFeedSheet(isPresented: $showAddFeed) { feed in
+                settings.iCalFeeds.append(feed)
+            }
+        }
+        .sheet(item: $editingFeed) { feed in
+            EditICalFeedSheet(feed: feed, isPresented: Binding(
+                get: { editingFeed != nil },
+                set: { if !$0 { editingFeed = nil } }
+            )) { updatedFeed in
+                if let index = settings.iCalFeeds.firstIndex(where: { $0.id == updatedFeed.id }) {
+                    settings.iCalFeeds[index] = updatedFeed
+                }
+            }
+        }
+    }
+}
+
+// MARK: - iCal Feed Row
+
+struct ICalFeedRow: View {
+    @Binding var feed: ICalFeed
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(Color(hex: feed.colorHex))
+                .frame(width: 10, height: 10)
+
+            Toggle("", isOn: $feed.isEnabled)
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+
+            Text(feed.name)
+
+            Spacer()
+
+            Button {
+                onEdit()
+            } label: {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                onDelete()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+// MARK: - Add iCal Feed Sheet
+
+struct AddICalFeedSheet: View {
+    @Binding var isPresented: Bool
+    let onAdd: (ICalFeed) -> Void
+
+    @State private var name = ""
+    @State private var url = ""
+    @State private var selectedColorHex = ICalFeed.colorPresets[4].hex // Blue default
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Add Online Calendar")
+                .font(.headline)
+
+            TextField("Calendar Name", text: $name)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("iCal URL (https://...)", text: $url)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Text("Color:")
+                    .foregroundStyle(.secondary)
+
+                ForEach(ICalFeed.colorPresets) { preset in
+                    Button {
+                        selectedColorHex = preset.hex
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: preset.hex))
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.primary, lineWidth: selectedColorHex == preset.hex ? 2 : 0)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Text("To find your Google Calendar URL: Calendar Settings -> [calendar] -> \"Secret address in iCal format\"")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Add") {
+                    let feed = ICalFeed(
+                        id: UUID(),
+                        name: name,
+                        url: url,
+                        isEnabled: true,
+                        colorHex: selectedColorHex
+                    )
+                    onAdd(feed)
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(name.isEmpty || url.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+}
+
+// MARK: - Edit iCal Feed Sheet
+
+struct EditICalFeedSheet: View {
+    let feed: ICalFeed
+    @Binding var isPresented: Bool
+    let onSave: (ICalFeed) -> Void
+
+    @State private var name: String
+    @State private var url: String
+    @State private var selectedColorHex: String
+
+    init(feed: ICalFeed, isPresented: Binding<Bool>, onSave: @escaping (ICalFeed) -> Void) {
+        self.feed = feed
+        self._isPresented = isPresented
+        self.onSave = onSave
+        self._name = State(initialValue: feed.name)
+        self._url = State(initialValue: feed.url)
+        self._selectedColorHex = State(initialValue: feed.colorHex)
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Edit Online Calendar")
+                .font(.headline)
+
+            TextField("Calendar Name", text: $name)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("iCal URL (https://...)", text: $url)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Text("Color:")
+                    .foregroundStyle(.secondary)
+
+                ForEach(ICalFeed.colorPresets) { preset in
+                    Button {
+                        selectedColorHex = preset.hex
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: preset.hex))
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.primary, lineWidth: selectedColorHex == preset.hex ? 2 : 0)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Save") {
+                    let updatedFeed = ICalFeed(
+                        id: feed.id,
+                        name: name,
+                        url: url,
+                        isEnabled: feed.isEnabled,
+                        colorHex: selectedColorHex
+                    )
+                    onSave(updatedFeed)
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(name.isEmpty || url.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+}
+
 // MARK: - Extras Tab
 
 struct ExtrasTabView: View {
