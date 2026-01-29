@@ -3,11 +3,33 @@ import ServiceManagement
 import AppKit
 import EventKit
 
+enum SettingsTab: String, CaseIterable {
+    case general = "General"
+    case appearance = "Appearance"
+    case window = "Window"
+    case location = "Location"
+    case worldClocks = "World Clocks"
+    case news = "News"
+    case extras = "Extras"
+
+    var icon: String {
+        switch self {
+        case .general: return "clock.fill"
+        case .appearance: return "paintbrush.fill"
+        case .window: return "macwindow"
+        case .location: return "location.fill"
+        case .worldClocks: return "globe"
+        case .news: return "newspaper.fill"
+        case .extras: return "sparkles"
+        }
+    }
+}
+
 struct SettingsView: View {
     @Bindable var settings: AppSettings
     let locationService: LocationService
-    @Environment(\.dismiss) private var dismiss
 
+    @State private var selectedTab: SettingsTab = .general
     @State private var citySearch = ""
     @State private var searchError: String?
     @FocusState private var isCityFieldFocused: Bool
@@ -18,65 +40,244 @@ struct SettingsView: View {
     @State private var alarmService = AlarmService()
 
     var body: some View {
-        Form {
-            Section("Display") {
-                Picker("Clock Style", selection: $settings.clockStyle) {
+        VStack(spacing: 0) {
+            // Toolbar-style tab bar
+            HStack(spacing: 2) {
+                ForEach(SettingsTab.allCases, id: \.self) { tab in
+                    SettingsTabButton(
+                        tab: tab,
+                        isSelected: selectedTab == tab
+                    ) {
+                        selectedTab = tab
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            Divider()
+
+            // Tab content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    switch selectedTab {
+                    case .general:
+                        GeneralTabView(settings: settings)
+                    case .appearance:
+                        AppearanceTabView(settings: settings)
+                    case .window:
+                        WindowTabView(settings: settings)
+                    case .location:
+                        LocationTabView(
+                            settings: settings,
+                            locationService: locationService,
+                            citySearch: $citySearch,
+                            searchError: $searchError,
+                            isCityFieldFocused: _isCityFieldFocused
+                        )
+                    case .worldClocks:
+                        WorldClocksTabView(
+                            settings: settings,
+                            showCityPicker: $showCityPicker
+                        )
+                    case .news:
+                        NewsTabView(settings: settings)
+                    case .extras:
+                        ExtrasTabView(
+                            settings: settings,
+                            calendarService: calendarService,
+                            showAlarmPanel: $showAlarmPanel
+                        )
+                    }
+                }
+                .padding()
+            }
+        }
+        .frame(width: 420, height: 400)
+        .sheet(isPresented: $showCityPicker) {
+            CityPickerSheet(
+                settings: settings,
+                searchService: citySearchService,
+                isPresented: $showCityPicker
+            )
+        }
+        .sheet(isPresented: $showAlarmPanel) {
+            AlarmPanelView(settings: settings, alarmService: alarmService)
+        }
+    }
+}
+
+// MARK: - Tab Button
+
+struct SettingsTabButton: View {
+    let tab: SettingsTab
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 18))
+                    .frame(height: 20)
+                Text(tab.rawValue)
+                    .font(.system(size: 10))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+            .foregroundStyle(isSelected ? .primary : .secondary)
+            .cornerRadius(6)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - General Tab
+
+struct GeneralTabView: View {
+    @Bindable var settings: AppSettings
+
+    var body: some View {
+        SettingsSection(title: "Clock Display") {
+            LabeledContent("Style") {
+                Picker("", selection: $settings.clockStyle) {
                     ForEach(ClockStyle.allCases, id: \.self) { style in
                         Text(style.rawValue).tag(style)
                     }
                 }
-                Toggle("24-Hour Time", isOn: $settings.use24Hour)
-                Toggle("Show Seconds", isOn: $settings.showSeconds)
-                Picker("Temperature", selection: $settings.useCelsius) {
-                    Text("°F").tag(false)
-                    Text("°C").tag(true)
-                }
-                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 140)
+            }
 
-                VStack(alignment: .leading) {
-                    Text("Clock Size: \(Int(settings.clockFontSize))")
+            LabeledContent("Size") {
+                HStack {
                     Slider(value: $settings.clockFontSize, in: 48...200, step: 4)
+                        .frame(width: 120)
+                    Text("\(Int(settings.clockFontSize))")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30)
                 }
+            }
 
-                if !settings.autoThemeEnabled {
-                    Picker("Theme", selection: $settings.colorTheme) {
+            Toggle("24-Hour Time", isOn: $settings.use24Hour)
+            Toggle("Show Seconds", isOn: $settings.showSeconds)
+        }
+
+        SettingsSection(title: "Temperature") {
+            Picker("", selection: $settings.useCelsius) {
+                Text("Fahrenheit (°F)").tag(false)
+                Text("Celsius (°C)").tag(true)
+            }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
+        }
+    }
+}
+
+// MARK: - Appearance Tab
+
+struct AppearanceTabView: View {
+    @Bindable var settings: AppSettings
+
+    var body: some View {
+        SettingsSection(title: "Theme") {
+            if !settings.autoThemeEnabled {
+                LabeledContent("Color Theme") {
+                    Picker("", selection: $settings.colorTheme) {
                         ForEach(ColorTheme.allCases, id: \.self) { theme in
                             Text(theme.rawValue).tag(theme)
                         }
                     }
+                    .labelsHidden()
+                    .frame(width: 140)
                 }
             }
 
-            Section("Appearance") {
-                Toggle("Auto-Dim", isOn: $settings.autoDimEnabled)
+            Toggle("Auto Theme Switching", isOn: $settings.autoThemeEnabled)
 
-                if settings.autoDimEnabled {
-                    Picker("Trigger", selection: $settings.autoDimMode) {
+            if settings.autoThemeEnabled {
+                LabeledContent("Day Theme") {
+                    Picker("", selection: $settings.dayTheme) {
+                        ForEach(ColorTheme.allCases, id: \.self) { theme in
+                            Text(theme.rawValue).tag(theme)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+
+                LabeledContent("Night Theme") {
+                    Picker("", selection: $settings.nightThemeAuto) {
+                        ForEach(ColorTheme.allCases, id: \.self) { theme in
+                            Text(theme.rawValue).tag(theme)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+
+                LabeledContent("Switch Based On") {
+                    Picker("", selection: $settings.autoThemeMode) {
                         ForEach(AutoDimMode.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
                         }
                     }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+            }
+        }
 
-                    if settings.autoDimMode == .fixedSchedule {
-                        Picker("Dim at", selection: $settings.dimStartHour) {
-                            ForEach(0..<24, id: \.self) { hour in
-                                Text(formatHour(hour)).tag(hour)
-                            }
-                        }
+        SettingsSection(title: "Auto-Dim") {
+            Toggle("Enable Auto-Dim", isOn: $settings.autoDimEnabled)
 
-                        Picker("Brighten at", selection: $settings.dimEndHour) {
-                            ForEach(0..<24, id: \.self) { hour in
-                                Text(formatHour(hour)).tag(hour)
-                            }
+            if settings.autoDimEnabled {
+                LabeledContent("Trigger") {
+                    Picker("", selection: $settings.autoDimMode) {
+                        ForEach(AutoDimMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
                     }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
 
-                    VStack(alignment: .leading) {
-                        Text("Dim Level: \(Int(settings.autoDimLevel * 100))%")
+                if settings.autoDimMode == .fixedSchedule {
+                    LabeledContent("Dim at") {
+                        Picker("", selection: $settings.dimStartHour) {
+                            ForEach(0..<24, id: \.self) { hour in
+                                Text(formatHour(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 100)
+                    }
+
+                    LabeledContent("Brighten at") {
+                        Picker("", selection: $settings.dimEndHour) {
+                            ForEach(0..<24, id: \.self) { hour in
+                                Text(formatHour(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 100)
+                    }
+                }
+
+                LabeledContent("Dim Level") {
+                    HStack {
                         Slider(value: $settings.autoDimLevel, in: 0.2...0.8, step: 0.1)
+                            .frame(width: 100)
+                        Text("\(Int(settings.autoDimLevel * 100))%")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 40)
                     }
+                }
 
-                    Picker("Night Theme", selection: Binding(
+                LabeledContent("Night Theme") {
+                    Picker("", selection: Binding(
                         get: { settings.nightTheme ?? .warmAmber },
                         set: { settings.nightTheme = $0 }
                     )) {
@@ -85,101 +286,139 @@ struct SettingsView: View {
                             Text(theme.rawValue).tag(Optional(theme))
                         }
                     }
-                }
-
-                Divider()
-
-                Toggle("Auto Theme Switching", isOn: $settings.autoThemeEnabled)
-
-                if settings.autoThemeEnabled {
-                    Picker("Day Theme", selection: $settings.dayTheme) {
-                        ForEach(ColorTheme.allCases, id: \.self) { theme in
-                            Text(theme.rawValue).tag(theme)
-                        }
-                    }
-
-                    Picker("Night Theme", selection: $settings.nightThemeAuto) {
-                        ForEach(ColorTheme.allCases, id: \.self) { theme in
-                            Text(theme.rawValue).tag(theme)
-                        }
-                    }
-
-                    Picker("Switch at", selection: $settings.autoThemeMode) {
-                        ForEach(AutoDimMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
+                    .labelsHidden()
+                    .frame(width: 140)
                 }
             }
+        }
+    }
 
-            Section("Window") {
-                Picker("Behavior", selection: $settings.windowLevel) {
+    private func formatHour(_ hour: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h a"
+        let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())!
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Window Tab
+
+struct WindowTabView: View {
+    @Bindable var settings: AppSettings
+
+    var body: some View {
+        SettingsSection(title: "Window Behavior") {
+            LabeledContent("Window Level") {
+                Picker("", selection: $settings.windowLevel) {
                     ForEach(WindowLevel.allCases, id: \.self) { level in
                         Text(level.rawValue).tag(level)
                     }
                 }
+                .labelsHidden()
+                .frame(width: 140)
+            }
 
-                VStack(alignment: .leading) {
-                    Text("Opacity: \(Int(settings.windowOpacity * 100))%")
+            LabeledContent("Opacity") {
+                HStack {
                     Slider(value: $settings.windowOpacity, in: 0.2...1.0, step: 0.1)
+                        .frame(width: 120)
+                    Text("\(Int(settings.windowOpacity * 100))%")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 40)
                 }
             }
+        }
 
-            Section("Location") {
-                Toggle("Auto-detect Location", isOn: $settings.useAutoLocation)
+        SettingsSection(title: "System") {
+            Toggle("Launch at Login", isOn: $settings.launchAtLogin)
+                .onChange(of: settings.launchAtLogin) { _, newValue in
+                    updateLaunchAtLogin(newValue)
+                }
+        }
+    }
 
-                if !settings.useAutoLocation {
-                    HStack {
-                        TextField("City name", text: $citySearch)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($isCityFieldFocused)
+    private func updateLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            print("Launch at login error: \(error)")
+        }
+    }
+}
 
-                        Button("Search") {
-                            Task { await searchCity() }
-                        }
-                    }
-                    .onAppear {
-                        // Ensure the sheet window can receive keyboard input
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            NSApp.activate(ignoringOtherApps: true)
-                        }
-                    }
+// MARK: - Location Tab
 
-                    if !settings.manualLocationName.isEmpty {
-                        Text("Current: \(settings.manualLocationName)")
-                            .foregroundStyle(.secondary)
-                    }
+struct LocationTabView: View {
+    @Bindable var settings: AppSettings
+    let locationService: LocationService
+    @Binding var citySearch: String
+    @Binding var searchError: String?
+    @FocusState var isCityFieldFocused: Bool
 
-                    if let error = searchError {
-                        Text(error)
-                            .foregroundStyle(.red)
-                            .font(.caption)
+    var body: some View {
+        SettingsSection(title: "Location") {
+            Toggle("Auto-detect Location", isOn: $settings.useAutoLocation)
+
+            if !settings.useAutoLocation {
+                HStack {
+                    TextField("City name", text: $citySearch)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($isCityFieldFocused)
+                        .frame(width: 180)
+
+                    Button("Search") {
+                        Task { await searchCity() }
                     }
                 }
-            }
 
-            Section("Background") {
-                Picker("Mode", selection: $settings.backgroundMode) {
+                if !settings.manualLocationName.isEmpty {
+                    Text("Current: \(settings.manualLocationName)")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+
+                if let error = searchError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+        }
+
+        SettingsSection(title: "Background") {
+            LabeledContent("Mode") {
+                Picker("", selection: $settings.backgroundMode) {
                     ForEach(BackgroundMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
                     }
                 }
+                .labelsHidden()
+                .frame(width: 140)
+            }
 
-                if settings.backgroundMode == .nature {
-                    VStack(alignment: .leading) {
-                        Text("Cycle every: \(Int(settings.backgroundCycleInterval))s")
+            if settings.backgroundMode == .nature {
+                LabeledContent("Cycle Interval") {
+                    HStack {
                         Slider(value: $settings.backgroundCycleInterval, in: 10...300, step: 10)
+                            .frame(width: 100)
+                        Text("\(Int(settings.backgroundCycleInterval))s")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 40)
                     }
                 }
+            }
 
-                if settings.backgroundMode == .custom {
+            if settings.backgroundMode == .custom {
+                LabeledContent("Image") {
                     HStack {
-                        Text(settings.customBackgroundPath ?? "None selected")
+                        Text(settings.customBackgroundPath?.split(separator: "/").last.map(String.init) ?? "None")
                             .foregroundStyle(settings.customBackgroundPath == nil ? .secondary : .primary)
                             .lineLimit(1)
-                            .truncationMode(.middle)
-
-                        Spacer()
+                            .frame(width: 100, alignment: .leading)
 
                         Button("Choose...") {
                             selectCustomBackground()
@@ -193,156 +432,7 @@ struct SettingsView: View {
                     }
                 }
             }
-
-            Section("Information") {
-                Toggle("World Clocks", isOn: $settings.worldClocksEnabled)
-
-                if settings.worldClocksEnabled {
-                    Picker("Position", selection: $settings.worldClocksPosition) {
-                        ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
-                            Text(pos.rawValue).tag(pos)
-                        }
-                    }
-
-                    Toggle("Show Timezone", isOn: $settings.showTimezoneAbbreviation)
-                    Toggle("Show Day Difference", isOn: $settings.showDayDifference)
-
-                    // City list
-                    ForEach(settings.worldClocks) { clock in
-                        HStack {
-                            Text(clock.cityName)
-                            Spacer()
-                            Text(clock.timezoneAbbreviation)
-                                .foregroundStyle(.secondary)
-                            Button {
-                                settings.worldClocks.removeAll { $0.id == clock.id }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundStyle(.red)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    if settings.worldClocks.count < 5 {
-                        Button {
-                            showCityPicker = true
-                        } label: {
-                            Label("Add City", systemImage: "plus.circle.fill")
-                        }
-                    }
-                }
-
-                Divider()
-
-                Toggle("News Ticker", isOn: $settings.newsTickerEnabled)
-
-                if settings.newsTickerEnabled {
-                    Picker("Style", selection: $settings.newsTickerStyle) {
-                        ForEach(NewsTickerStyle.allCases, id: \.self) { style in
-                            Text(style.rawValue).tag(style)
-                        }
-                    }
-
-                    if settings.newsTickerStyle == .scrolling {
-                        VStack(alignment: .leading) {
-                            Text("Scroll Speed: \(Int(settings.newsScrollSpeed))")
-                            Slider(value: $settings.newsScrollSpeed, in: 20...100, step: 10)
-                        }
-                    } else {
-                        VStack(alignment: .leading) {
-                            Text("Rotate Every: \(Int(settings.newsRotateInterval))s")
-                            Slider(value: $settings.newsRotateInterval, in: 5...30, step: 5)
-                        }
-                    }
-
-                    Text("News Sources")
-                        .font(.headline)
-                        .padding(.top, 8)
-
-                    ForEach($settings.newsFeeds) { $feed in
-                        Toggle(feed.name, isOn: $feed.isEnabled)
-                    }
-                }
-
-                Divider()
-
-                Toggle("Calendar", isOn: $settings.calendarEnabled)
-
-                if settings.calendarEnabled {
-                    if calendarService.authorizationStatus != .fullAccess && calendarService.authorizationStatus != .authorized {
-                        Button("Grant Calendar Access") {
-                            Task { await calendarService.requestAccess() }
-                        }
-                    } else {
-                        Toggle("Show Next Event", isOn: $settings.calendarShowCountdown)
-                        Toggle("Show Agenda Panel", isOn: $settings.calendarShowAgenda)
-
-                        if settings.calendarShowAgenda {
-                            Picker("Panel Position", selection: $settings.calendarAgendaPosition) {
-                                ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
-                                    Text(pos.rawValue).tag(pos)
-                                }
-                            }
-                        }
-
-                        Text("Calendars")
-                            .font(.headline)
-                            .padding(.top, 8)
-
-                        ForEach(calendarService.availableCalendars, id: \.calendarIdentifier) { calendar in
-                            Toggle(calendar.title, isOn: Binding(
-                                get: { settings.selectedCalendarIDs.contains(calendar.calendarIdentifier) },
-                                set: { enabled in
-                                    if enabled {
-                                        settings.selectedCalendarIDs.append(calendar.calendarIdentifier)
-                                    } else {
-                                        settings.selectedCalendarIDs.removeAll { $0 == calendar.calendarIdentifier }
-                                    }
-                                }
-                            ))
-                        }
-                    }
-                }
-            }
-
-            Section("Alarms") {
-                Button("Manage Alarms, Timer & Stopwatch") {
-                    showAlarmPanel = true
-                }
-            }
-
-            Section("System") {
-                Toggle("Launch at Login", isOn: $settings.launchAtLogin)
-                    .onChange(of: settings.launchAtLogin) { _, newValue in
-                        updateLaunchAtLogin(newValue)
-                    }
-            }
         }
-        .formStyle(.grouped)
-        .sheet(isPresented: $showCityPicker) {
-            CityPickerSheet(
-                settings: settings,
-                searchService: citySearchService,
-                isPresented: $showCityPicker
-            )
-        }
-        .sheet(isPresented: $showAlarmPanel) {
-            AlarmPanelView(settings: settings, alarmService: alarmService)
-        }
-        .frame(width: 350, height: 700)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-            }
-        }
-    }
-
-    private func formatHour(_ hour: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h a"
-        let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())!
-        return formatter.string(from: date)
     }
 
     private func searchCity() async {
@@ -369,19 +459,205 @@ struct SettingsView: View {
             settings.customBackgroundPath = panel.url?.path
         }
     }
+}
 
-    private func updateLaunchAtLogin(_ enabled: Bool) {
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
+// MARK: - World Clocks Tab
+
+struct WorldClocksTabView: View {
+    @Bindable var settings: AppSettings
+    @Binding var showCityPicker: Bool
+
+    var body: some View {
+        SettingsSection(title: "World Clocks") {
+            Toggle("Enable World Clocks", isOn: $settings.worldClocksEnabled)
+
+            if settings.worldClocksEnabled {
+                LabeledContent("Position") {
+                    Picker("", selection: $settings.worldClocksPosition) {
+                        ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
+                            Text(pos.rawValue).tag(pos)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 100)
+                }
+
+                Toggle("Show Timezone Abbreviation", isOn: $settings.showTimezoneAbbreviation)
+                Toggle("Show Day Difference", isOn: $settings.showDayDifference)
             }
-        } catch {
-            print("Launch at login error: \(error)")
+        }
+
+        if settings.worldClocksEnabled {
+            SettingsSection(title: "Cities") {
+                ForEach(settings.worldClocks) { clock in
+                    HStack {
+                        Text(clock.cityName)
+                        Spacer()
+                        Text(clock.timezoneAbbreviation)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            settings.worldClocks.removeAll { $0.id == clock.id }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                if settings.worldClocks.isEmpty {
+                    Text("No cities added")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+
+                if settings.worldClocks.count < 5 {
+                    Button {
+                        showCityPicker = true
+                    } label: {
+                        Label("Add City", systemImage: "plus.circle.fill")
+                    }
+                    .padding(.top, 4)
+                }
+            }
         }
     }
 }
+
+// MARK: - Extras Tab
+
+struct ExtrasTabView: View {
+    @Bindable var settings: AppSettings
+    let calendarService: CalendarService
+    @Binding var showAlarmPanel: Bool
+
+    var body: some View {
+        SettingsSection(title: "News Ticker") {
+            Toggle("Enable News Ticker", isOn: $settings.newsTickerEnabled)
+
+            if settings.newsTickerEnabled {
+                LabeledContent("Style") {
+                    Picker("", selection: $settings.newsTickerStyle) {
+                        ForEach(NewsTickerStyle.allCases, id: \.self) { style in
+                            Text(style.rawValue).tag(style)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 100)
+                }
+
+                if settings.newsTickerStyle == .scrolling {
+                    LabeledContent("Speed") {
+                        HStack {
+                            Slider(value: $settings.newsScrollSpeed, in: 20...100, step: 10)
+                                .frame(width: 80)
+                            Text("\(Int(settings.newsScrollSpeed))")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                        }
+                    }
+                } else {
+                    LabeledContent("Rotate Every") {
+                        HStack {
+                            Slider(value: $settings.newsRotateInterval, in: 5...30, step: 5)
+                                .frame(width: 80)
+                            Text("\(Int(settings.newsRotateInterval))s")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                        }
+                    }
+                }
+
+                Text("Sources")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+
+                ForEach($settings.newsFeeds) { $feed in
+                    Toggle(feed.name, isOn: $feed.isEnabled)
+                }
+            }
+        }
+
+        SettingsSection(title: "Calendar") {
+            Toggle("Enable Calendar", isOn: $settings.calendarEnabled)
+
+            if settings.calendarEnabled {
+                if calendarService.authorizationStatus != .fullAccess && calendarService.authorizationStatus != .authorized {
+                    Button("Grant Calendar Access") {
+                        Task { await calendarService.requestAccess() }
+                    }
+                } else {
+                    Toggle("Show Next Event Countdown", isOn: $settings.calendarShowCountdown)
+                    Toggle("Show Agenda Panel", isOn: $settings.calendarShowAgenda)
+
+                    if settings.calendarShowAgenda {
+                        LabeledContent("Panel Position") {
+                            Picker("", selection: $settings.calendarAgendaPosition) {
+                                ForEach(WorldClocksPosition.allCases, id: \.self) { pos in
+                                    Text(pos.rawValue).tag(pos)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 100)
+                        }
+                    }
+
+                    if !calendarService.availableCalendars.isEmpty {
+                        Text("Calendars")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+
+                        ForEach(calendarService.availableCalendars, id: \.calendarIdentifier) { calendar in
+                            Toggle(calendar.title, isOn: Binding(
+                                get: { settings.selectedCalendarIDs.contains(calendar.calendarIdentifier) },
+                                set: { enabled in
+                                    if enabled {
+                                        settings.selectedCalendarIDs.append(calendar.calendarIdentifier)
+                                    } else {
+                                        settings.selectedCalendarIDs.removeAll { $0 == calendar.calendarIdentifier }
+                                    }
+                                }
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+
+        SettingsSection(title: "Alarms & Timers") {
+            Button("Open Alarms, Timer & Stopwatch") {
+                showAlarmPanel = true
+            }
+        }
+    }
+}
+
+// MARK: - Settings Section
+
+struct SettingsSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            VStack(alignment: .leading, spacing: 10) {
+                content
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+        }
+    }
+}
+
+// MARK: - City Picker Sheet
 
 struct CityPickerSheet: View {
     let settings: AppSettings
@@ -392,10 +668,25 @@ struct CityPickerSheet: View {
     @State private var searchResults: [CitySearchResult] = []
 
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Add City")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding()
+
             TextField("Search city...", text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .padding()
+                .padding(.horizontal)
                 .onChange(of: searchText) { _, newValue in
                     Task {
                         searchResults = await searchService.search(query: newValue)
@@ -420,13 +711,9 @@ struct CityPickerSheet: View {
                     }
                 }
             }
-
-            Button("Cancel") {
-                isPresented = false
-            }
-            .padding()
+            .listStyle(.plain)
         }
-        .frame(width: 300, height: 400)
+        .frame(width: 350, height: 400)
         .task {
             searchResults = await searchService.allCities()
         }
