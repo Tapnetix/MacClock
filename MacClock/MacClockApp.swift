@@ -12,6 +12,7 @@ struct MacClockApp: App {
     private let weatherService = WeatherService()
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @Environment(\.openWindow) private var openWindow
 
     init() {
         registerFonts()
@@ -32,11 +33,18 @@ struct MacClockApp: App {
         .commands {
             CommandGroup(replacing: .appSettings) {
                 Button("Settings...") {
-                    showSettings = true
+                    openWindow(id: "settings")
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
+
+        Window("Settings", id: "settings") {
+            SettingsView(settings: settings, locationService: locationService)
+        }
+        .windowStyle(.automatic)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 
     private func registerFonts() {
@@ -60,6 +68,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// MARK: - Theme Change Modifier
+
+struct ThemeChangeModifier: ViewModifier {
+    let settings: AppSettings
+    let dimManager: DimManager
+    let sunrise: Date?
+    let sunset: Date?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: settings.autoDimEnabled) { _, _ in update() }
+            .onChange(of: settings.autoDimMode) { _, _ in update() }
+            .onChange(of: settings.autoDimLevel) { _, _ in update() }
+            .onChange(of: settings.autoThemeEnabled) { _, _ in update() }
+            .onChange(of: settings.autoThemeMode) { _, _ in update() }
+            .onChange(of: settings.dayTheme) { _, _ in update() }
+            .onChange(of: settings.nightThemeAuto) { _, _ in update() }
+            .onChange(of: settings.colorTheme) { _, _ in update() }
+            .onChange(of: settings.nightTheme) { _, _ in update() }
+    }
+
+    private func update() {
+        dimManager.update(settings: settings, sunrise: sunrise, sunset: sunset)
+    }
+}
+
+extension View {
+    func onThemeSettingsChange(settings: AppSettings, dimManager: DimManager, sunrise: Date?, sunset: Date?) -> some View {
+        modifier(ThemeChangeModifier(settings: settings, dimManager: dimManager, sunrise: sunrise, sunset: sunset))
+    }
+}
+
 struct MainClockView: View {
     let settings: AppSettings
     let weatherService: WeatherService
@@ -67,6 +107,7 @@ struct MainClockView: View {
     let backgroundManager: BackgroundManager
     @Binding var showSettings: Bool
 
+    @Environment(\.openWindow) private var openWindow
     @State private var weather: WeatherData?
     @State private var natureService = NatureBackgroundService()
     @State private var currentNatureImage: NSImage?
@@ -83,6 +124,9 @@ struct MainClockView: View {
     @State private var todayEvents: [CalendarEvent] = []
     @State private var alarmService = AlarmService()
     @State private var showAlarmPanel = false
+    @State private var iCalService = ICalService()
+    @State private var iCalEvents: [CalendarEvent] = []
+    @State private var iCalTimer: Timer?
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -187,7 +231,7 @@ struct MainClockView: View {
                         }
                         .buttonStyle(.plain)
                         Button {
-                            showSettings.toggle()
+                            openWindow(id: "settings")
                         } label: {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 18))
@@ -217,9 +261,6 @@ struct MainClockView: View {
                     )
                 }
         }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(settings: settings, locationService: locationService)
         }
         .sheet(isPresented: $showAlarmPanel) {
             AlarmPanelView(settings: settings, alarmService: alarmService)
@@ -278,6 +319,11 @@ struct MainClockView: View {
                 loadCalendarEvents()
             }
 
+            // Setup iCal refresh timer (every 15 minutes)
+            iCalTimer = Timer.scheduledTimer(withTimeInterval: 15 * 60, repeats: true) { _ in
+                loadCalendarEvents()
+            }
+
             // Start alarm monitoring
             alarmService.startMonitoring(alarms: settings.alarms)
         }
@@ -285,6 +331,7 @@ struct MainClockView: View {
             weatherTimer?.invalidate()
             backgroundTimer?.invalidate()
             dimTimer?.invalidate()
+            iCalTimer?.invalidate()
             alarmService.stopMonitoring()
         }
         .onChange(of: settings.backgroundMode) { _, _ in
@@ -319,18 +366,7 @@ struct MainClockView: View {
                 await loadWeather()
             }
         }
-        .onChange(of: settings.autoDimEnabled) { _, _ in
-            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-        }
-        .onChange(of: settings.autoDimMode) { _, _ in
-            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-        }
-        .onChange(of: settings.autoThemeEnabled) { _, _ in
-            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-        }
-        .onChange(of: settings.colorTheme) { _, _ in
-            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-        }
+        .onThemeSettingsChange(settings: settings, dimManager: dimManager, sunrise: weather?.sunrise, sunset: weather?.sunset)
         .onChange(of: settings.newsTickerEnabled) { _, enabled in
             if enabled {
                 Task { await loadNews() }
@@ -340,6 +376,9 @@ struct MainClockView: View {
             if enabled {
                 loadCalendarEvents()
             }
+        }
+        .onChange(of: settings.iCalFeeds) { _, _ in
+            loadCalendarEvents()
         }
         .onChange(of: settings.alarms) { _, newAlarms in
             alarmService.startMonitoring(alarms: newAlarms)
@@ -453,7 +492,36 @@ struct MainClockView: View {
     }
 
     private func loadCalendarEvents() {
+        // Local calendar events
         nextEvent = calendarService.fetchNextEvent(from: settings.selectedCalendarIDs)
-        todayEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
+        let allEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
+
+        // Fetch iCal events
+        Task {
+            var fetchedEvents: [CalendarEvent] = []
+            for feed in settings.iCalFeeds where feed.isEnabled {
+                do {
+                    let events = try await iCalService.fetchEvents(from: feed)
+                    // Filter to today's events
+                    let today = Calendar.current.startOfDay(for: Date())
+                    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+                    let todayEvents = events.filter { $0.startDate >= today && $0.startDate < tomorrow }
+                    fetchedEvents.append(contentsOf: todayEvents)
+                } catch {
+                    print("Failed to fetch iCal feed \(feed.name): \(error)")
+                }
+            }
+
+            await MainActor.run {
+                iCalEvents = fetchedEvents
+                // Merge and sort all events
+                todayEvents = (allEvents + iCalEvents).sorted { $0.startDate < $1.startDate }
+                // Update next event to include iCal events
+                let now = Date()
+                nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
+            }
+        }
+
+        todayEvents = allEvents
     }
 }
