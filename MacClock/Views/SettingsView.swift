@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var showCityPicker = false
     @State private var citySearchService = CitySearchService()
     @State private var calendarService = CalendarService()
+    @State private var showAlarmPanel = false
+    @State private var alarmService = AlarmService()
 
     var body: some View {
         Form {
@@ -304,6 +306,12 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Alarms") {
+                Button("Manage Alarms, Timer & Stopwatch") {
+                    showAlarmPanel = true
+                }
+            }
+
             Section("System") {
                 Toggle("Launch at Login", isOn: $settings.launchAtLogin)
                     .onChange(of: settings.launchAtLogin) { _, newValue in
@@ -318,6 +326,9 @@ struct SettingsView: View {
                 searchService: citySearchService,
                 isPresented: $showCityPicker
             )
+        }
+        .sheet(isPresented: $showAlarmPanel) {
+            AlarmPanelView(settings: settings, alarmService: alarmService)
         }
         .frame(width: 350, height: 700)
         .toolbar {

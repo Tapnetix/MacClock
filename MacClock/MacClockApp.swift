@@ -81,6 +81,8 @@ struct MainClockView: View {
     @State private var calendarService = CalendarService()
     @State private var nextEvent: CalendarEvent?
     @State private var todayEvents: [CalendarEvent] = []
+    @State private var alarmService = AlarmService()
+    @State private var showAlarmPanel = false
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -142,6 +144,14 @@ struct MainClockView: View {
 
                         Spacer()
                         Button {
+                            showAlarmPanel = true
+                        } label: {
+                            Image(systemName: "alarm.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(effectiveTheme.primaryColor.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                        Button {
                             showSettings.toggle()
                         } label: {
                             Image(systemName: "gearshape.fill")
@@ -188,10 +198,23 @@ struct MainClockView: View {
                         NewsTickerView(settings: settings, theme: effectiveTheme, newsItems: newsItems)
                     }
                 }
+
+                // Alarm firing overlay
+                if alarmService.isAlarmFiring, let alarm = alarmService.activeAlarm {
+                    AlarmFiringView(
+                        alarm: alarm,
+                        onDismiss: { alarmService.dismissAlarm() },
+                        onSnooze: { alarmService.snoozeAlarm() },
+                        theme: effectiveTheme
+                    )
+                }
         }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings, locationService: locationService)
+        }
+        .sheet(isPresented: $showAlarmPanel) {
+            AlarmPanelView(settings: settings, alarmService: alarmService)
         }
         .windowLevel(settings.windowLevel, opacity: settings.windowOpacity) { window in
             // Restore saved frame
@@ -246,11 +269,15 @@ struct MainClockView: View {
             if settings.calendarEnabled {
                 loadCalendarEvents()
             }
+
+            // Start alarm monitoring
+            alarmService.startMonitoring(alarms: settings.alarms)
         }
         .onDisappear {
             weatherTimer?.invalidate()
             backgroundTimer?.invalidate()
             dimTimer?.invalidate()
+            alarmService.stopMonitoring()
         }
         .onChange(of: settings.backgroundMode) { _, _ in
             loadInitialBackground()
@@ -305,6 +332,9 @@ struct MainClockView: View {
             if enabled {
                 loadCalendarEvents()
             }
+        }
+        .onChange(of: settings.alarms) { _, newAlarms in
+            alarmService.startMonitoring(alarms: newAlarms)
         }
     }
 
