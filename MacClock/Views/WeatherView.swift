@@ -3,21 +3,23 @@ import SwiftUI
 struct WeatherView: View {
     let weather: WeatherData?
     let useCelsius: Bool
+    var theme: ColorTheme = .classicWhite
 
     var body: some View {
         if let weather = weather {
             HStack(spacing: 6) {
                 Image(systemName: weather.condition.sfSymbol)
                     .font(.system(size: 18))
+                    .foregroundStyle(theme.primaryColor.opacity(0.9))
 
                 Text(temperatureString(weather.temperature))
                     .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(theme.primaryColor)
 
                 Text(weather.locationName)
                     .font(.system(size: 14))
-                    .opacity(0.8)
+                    .foregroundStyle(theme.accentColor)
             }
-            .foregroundStyle(.white)
             .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
         } else {
             HStack(spacing: 6) {
@@ -26,7 +28,7 @@ struct WeatherView: View {
                 Text("—")
                     .font(.system(size: 18, weight: .medium))
             }
-            .foregroundStyle(.white.opacity(0.6))
+            .foregroundStyle(theme.primaryColor.opacity(0.6))
         }
     }
 
