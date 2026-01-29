@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ClockView: View {
     let settings: AppSettings
+    var theme: ColorTheme = .classicWhite
 
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -20,20 +21,20 @@ struct ClockView: View {
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(timeString)
                     .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryColor)
 
                 // AM/PM and seconds stacked vertically to the right
                 VStack(alignment: .leading, spacing: 0) {
                     if !settings.use24Hour {
                         Text(amPmString)
                             .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.primaryColor)
                     }
 
                     if settings.showSeconds {
                         Text(secondsString)
                             .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(theme.primaryColor.opacity(theme.secondaryOpacity))
                     }
                 }
                 .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
@@ -42,7 +43,7 @@ struct ClockView: View {
             // Date display
             Text(dateString)
                 .font(.system(size: dateFontSize, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.accentColor)
                 .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
         }
         .onReceive(timer) { _ in
@@ -77,7 +78,7 @@ struct ClockView: View {
 }
 
 #Preview {
-    ClockView(settings: AppSettings())
+    ClockView(settings: AppSettings(), theme: .classicWhite)
         .frame(width: 480, height: 320)
         .background(.black)
 }
