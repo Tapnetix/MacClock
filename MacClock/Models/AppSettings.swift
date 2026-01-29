@@ -222,6 +222,14 @@ final class AppSettings {
         didSet { defaults.set(selectedCalendarIDs, forKey: "selectedCalendarIDs") }
     }
 
+    var alarms: [Alarm] {
+        didSet {
+            if let data = try? JSONEncoder().encode(alarms) {
+                defaults.set(data, forKey: "alarms")
+            }
+        }
+    }
+
     var windowFrame: NSRect {
         get {
             let x = defaults.double(forKey: "windowX")
@@ -299,5 +307,11 @@ final class AppSettings {
         self.calendarShowAgenda = defaults.bool(forKey: "calendarShowAgenda")
         self.calendarAgendaPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "calendarAgendaPosition") ?? "") ?? .side
         self.selectedCalendarIDs = defaults.stringArray(forKey: "selectedCalendarIDs") ?? []
+        if let data = defaults.data(forKey: "alarms"),
+           let loadedAlarms = try? JSONDecoder().decode([Alarm].self, from: data) {
+            self.alarms = loadedAlarms
+        } else {
+            self.alarms = []
+        }
     }
 }
