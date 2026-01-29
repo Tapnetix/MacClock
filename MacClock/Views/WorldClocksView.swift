@@ -32,7 +32,7 @@ struct WorldClocksView: View {
     }
 
     private var sidePanelLayout: some View {
-        VStack(alignment: .trailing, spacing: 12) {
+        VStack(alignment: .trailing, spacing: 10) {
             ForEach(settings.worldClocks.prefix(5)) { clock in
                 WorldClockItem(
                     clock: clock,
@@ -44,9 +44,10 @@ struct WorldClocksView: View {
                 )
             }
         }
-        .padding()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(Color.black.opacity(0.3))
-        .cornerRadius(8)
+        .cornerRadius(6)
     }
 }
 
@@ -119,7 +120,7 @@ struct WorldClockItem: View {
                     .foregroundStyle(theme.accentColor.opacity(0.6))
             }
         }
-        .frame(minWidth: 100, alignment: .trailing)
+        .frame(alignment: .trailing)
     }
 }
 

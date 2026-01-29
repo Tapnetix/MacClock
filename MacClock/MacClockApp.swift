@@ -163,7 +163,6 @@ struct MainClockView: View {
                 // World Clocks (side panel)
                 if settings.worldClocksEnabled && settings.worldClocksPosition == .side && !settings.worldClocks.isEmpty {
                     WorldClocksView(settings: settings, theme: effectiveTheme)
-                        .frame(width: 120)
                 }
 
                 // Calendar Agenda (side panel)
