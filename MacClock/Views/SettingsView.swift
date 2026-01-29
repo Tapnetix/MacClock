@@ -9,6 +9,7 @@ enum SettingsTab: String, CaseIterable {
     case window = "Window"
     case location = "Location"
     case worldClocks = "World Clocks"
+    case calendar = "Calendar"
     case news = "News"
     case extras = "Extras"
 
@@ -19,6 +20,7 @@ enum SettingsTab: String, CaseIterable {
         case .window: return "macwindow"
         case .location: return "location.fill"
         case .worldClocks: return "globe"
+        case .calendar: return "calendar"
         case .news: return "newspaper.fill"
         case .extras: return "sparkles"
         }
@@ -81,6 +83,8 @@ struct SettingsView: View {
                             settings: settings,
                             showCityPicker: $showCityPicker
                         )
+                    case .calendar:
+                        CalendarTabView(settings: settings, calendarService: calendarService)
                     case .news:
                         NewsTabView(settings: settings)
                     case .extras:
