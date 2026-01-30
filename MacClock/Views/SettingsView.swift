@@ -534,6 +534,7 @@ struct CalendarTabView: View {
     let calendarService: CalendarService
     @State private var showAddFeed = false
     @State private var editingFeed: ICalFeed?
+    @State private var testingFeed: ICalFeed?
 
     var body: some View {
         SettingsSection(title: "Display") {
@@ -594,7 +595,9 @@ struct CalendarTabView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach($settings.iCalFeeds) { $feed in
-                    ICalFeedRow(feed: $feed, onEdit: {
+                    ICalFeedRow(feed: $feed, onTest: {
+                        testingFeed = feed
+                    }, onEdit: {
                         editingFeed = feed
                     }, onDelete: {
                         settings.iCalFeeds.removeAll { $0.id == feed.id }
@@ -624,6 +627,12 @@ struct CalendarTabView: View {
                 }
             }
         }
+        .sheet(item: $testingFeed) { feed in
+            TestICalFeedSheet(feed: feed, isPresented: Binding(
+                get: { testingFeed != nil },
+                set: { if !$0 { testingFeed = nil } }
+            ))
+        }
     }
 }
 
@@ -631,6 +640,7 @@ struct CalendarTabView: View {
 
 struct ICalFeedRow: View {
     @Binding var feed: ICalFeed
+    let onTest: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -647,6 +657,15 @@ struct ICalFeedRow: View {
             Text(feed.name)
 
             Spacer()
+
+            Button {
+                onTest()
+            } label: {
+                Image(systemName: "arrow.clockwise.circle")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Test connection")
 
             Button {
                 onEdit()
@@ -813,6 +832,238 @@ struct EditICalFeedSheet: View {
         }
         .padding()
         .frame(width: 400)
+    }
+}
+
+// MARK: - Test iCal Feed Sheet
+
+struct TestICalFeedSheet: View {
+    let feed: ICalFeed
+    @Binding var isPresented: Bool
+
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    @State private var allEvents: [CalendarEvent] = []
+    @State private var todayEvents: [CalendarEvent] = []
+    @State private var rawContentPreview: String = ""
+
+    private let iCalService = ICalService()
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Test Connection: \(feed.name)")
+                .font(.headline)
+
+            if isLoading {
+                ProgressView("Fetching calendar...")
+                    .padding()
+            } else if let error = errorMessage {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.red)
+                    Text("Connection Failed")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    if !rawContentPreview.isEmpty {
+                        Divider()
+                        Text("Response preview:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ScrollView {
+                            Text(rawContentPreview)
+                                .font(.system(size: 10, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 100)
+                        .background(Color.black.opacity(0.1))
+                        .cornerRadius(4)
+                    }
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.green)
+                    Text("Connection Successful")
+                        .font(.headline)
+
+                    Divider()
+
+                    HStack {
+                        VStack {
+                            Text("\(allEvents.count)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                            Text("Total Events")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        VStack {
+                            Text("\(todayEvents.count)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundStyle(todayEvents.isEmpty ? .red : .primary)
+                            Text("Today's Events")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    if todayEvents.isEmpty && !allEvents.isEmpty {
+                        Text("No events scheduled for today, but calendar has events on other days.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    if !todayEvents.isEmpty {
+                        Divider()
+                        Text("Today's Events:")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(todayEvents.prefix(10)) { event in
+                                    HStack {
+                                        Text(formatTime(event.startDate))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 50, alignment: .leading)
+                                        Text(event.title)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                if todayEvents.count > 10 {
+                                    Text("... and \(todayEvents.count - 10) more")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 150)
+                    } else if !allEvents.isEmpty {
+                        Divider()
+                        Text("Upcoming Events:")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(allEvents.sorted { $0.startDate < $1.startDate }.prefix(5)) { event in
+                                    HStack {
+                                        Text(formatDate(event.startDate))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 80, alignment: .leading)
+                                        Text(event.title)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 100)
+                    }
+                }
+            }
+
+            Divider()
+
+            Text("URL: \(feed.url)")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+
+            Button("Close") {
+                isPresented = false
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .frame(width: 400)
+        .task {
+            await testConnection()
+        }
+    }
+
+    private func testConnection() async {
+        isLoading = true
+        errorMessage = nil
+
+        guard let url = URL(string: feed.url) else {
+            errorMessage = "Invalid URL format"
+            isLoading = false
+            return
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            // Check HTTP status
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode != 200 {
+                    errorMessage = "HTTP Error: \(httpResponse.statusCode)"
+                    if let preview = String(data: data.prefix(500), encoding: .utf8) {
+                        rawContentPreview = preview
+                    }
+                    isLoading = false
+                    return
+                }
+            }
+
+            guard let content = String(data: data, encoding: .utf8) else {
+                errorMessage = "Could not decode response as text"
+                isLoading = false
+                return
+            }
+
+            // Check if it looks like ICS content
+            if !content.contains("BEGIN:VCALENDAR") {
+                errorMessage = "Response is not valid iCal format (missing BEGIN:VCALENDAR)"
+                rawContentPreview = String(content.prefix(500))
+                isLoading = false
+                return
+            }
+
+            // Parse events
+            let events = iCalService.parseICS(content, feedName: feed.name, colorHex: feed.colorHex)
+            allEvents = events
+
+            // Filter today's events
+            let today = Calendar.current.startOfDay(for: Date())
+            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+            todayEvents = events.filter { $0.startDate >= today && $0.startDate < tomorrow }
+
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 }
 
