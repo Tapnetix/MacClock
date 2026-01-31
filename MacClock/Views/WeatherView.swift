@@ -167,6 +167,7 @@ struct WeatherDetailPanel: View {
                         .foregroundStyle(theme.accentColor)
                     Image(systemName: hour.condition.sfSymbol)
                         .font(.system(size: 12))
+                        .frame(height: 16) // Fixed height for consistent alignment
                         .foregroundStyle(theme.primaryColor.opacity(0.9))
                     Text(tempString(hour.temperature))
                         .font(.system(size: 10))
