@@ -45,7 +45,13 @@ struct WeatherView: View {
             condition: .clear,
             locationName: "San Francisco",
             sunrise: Date(),
-            sunset: Date()
+            sunset: Date(),
+            feelsLike: 70,
+            humidity: 65,
+            highTemp: 75,
+            lowTemp: 62,
+            hourlyForecast: [],
+            dailyForecast: []
         ),
         useCelsius: false
     )

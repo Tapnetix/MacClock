@@ -11,8 +11,9 @@ actor WeatherService {
         components.queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,weather_code"),
-            URLQueryItem(name: "daily", value: "sunrise,sunset"),
+            URLQueryItem(name: "current", value: "temperature_2m,weather_code,apparent_temperature,relative_humidity_2m"),
+            URLQueryItem(name: "daily", value: "sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code"),
+            URLQueryItem(name: "hourly", value: "time,temperature_2m,weather_code"),
             URLQueryItem(name: "temperature_unit", value: useCelsius ? "celsius" : "fahrenheit"),
             URLQueryItem(name: "timezone", value: "auto")
         ]
@@ -39,7 +40,13 @@ actor WeatherService {
             condition: WeatherCondition.fromCode(response.current.weatherCode),
             locationName: locationName,
             sunrise: formatter.date(from: response.daily.sunrise.first ?? "") ?? Date(),
-            sunset: formatter.date(from: response.daily.sunset.first ?? "") ?? Date()
+            sunset: formatter.date(from: response.daily.sunset.first ?? "") ?? Date(),
+            feelsLike: response.current.apparentTemperature,
+            humidity: response.current.humidity,
+            highTemp: response.daily.maxTemps.first ?? response.current.temperature,
+            lowTemp: response.daily.minTemps.first ?? response.current.temperature,
+            hourlyForecast: [],
+            dailyForecast: []
         )
 
         cachedWeather = weather
