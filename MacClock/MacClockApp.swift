@@ -236,6 +236,25 @@ struct MainClockView: View {
             .opacity(dimManager.currentDimLevel)
             .animation(.easeInOut(duration: 2.0), value: dimManager.currentDimLevel)
 
+                // Weather detail panel - rendered on top of all content
+                if showWeatherDetail, let weather = weather {
+                    VStack {
+                        HStack {
+                            WeatherDetailPanel(
+                                weather: weather,
+                                useCelsius: settings.useCelsius,
+                                settings: settings,
+                                theme: effectiveTheme
+                            )
+                            .padding(.top, 44) // Below weather display
+                            .padding(.leading, 16)
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
+                }
+
                 // Settings and alarm buttons (top-right corner)
                 VStack {
                     HStack {

@@ -8,7 +8,7 @@ struct WeatherView: View {
     @Binding var showDetailPanel: Bool
 
     var body: some View {
-        // Main weather display (clickable)
+        // Main weather display (clickable) - panel is rendered separately in MainClockView
         weatherDisplay
             .contentShape(Rectangle())
             .onTapGesture {
@@ -18,20 +18,6 @@ struct WeatherView: View {
                     }
                 }
             }
-            .overlay(alignment: .topLeading) {
-                // Dropdown panel - overlays content below, doesn't shift layout
-                if showDetailPanel, let weather = weather {
-                    WeatherDetailPanel(
-                        weather: weather,
-                        useCelsius: useCelsius,
-                        settings: settings,
-                        theme: theme
-                    )
-                    .offset(y: 28) // Position below the weather display
-                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
-                }
-            }
-            .zIndex(showDetailPanel ? 100 : 0) // Bring to front when panel is shown
     }
 
     @ViewBuilder
