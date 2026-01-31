@@ -246,6 +246,7 @@ struct MainClockView: View {
                                 settings: settings,
                                 theme: effectiveTheme
                             )
+                            .frame(width: 180) // Fixed width for compact panel
                             .padding(.top, 44) // Below weather display
                             .padding(.leading, 16)
                             Spacer()
