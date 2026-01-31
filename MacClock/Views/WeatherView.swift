@@ -31,6 +31,7 @@ struct WeatherView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
                 }
             }
+            .zIndex(showDetailPanel ? 100 : 0) // Bring to front when panel is shown
     }
 
     @ViewBuilder
