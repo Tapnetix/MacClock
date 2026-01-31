@@ -34,14 +34,16 @@ actor WeatherService {
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        // Open-Meteo returns dates like "2026-01-31T07:32" (no seconds)
+        let dateTimeFormatter = DateFormatter()
+        dateTimeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        dateTimeFormatter.timeZone = TimeZone.current
 
         // Parse hourly forecast - filter to future times, max 6 entries
         let now = Date()
         var hourlyForecast: [HourlyWeather] = []
         for i in 0..<min(response.hourly.times.count, response.hourly.temperatures.count, response.hourly.weatherCodes.count) {
-            if let time = formatter.date(from: response.hourly.times[i]), time > now {
+            if let time = dateTimeFormatter.date(from: response.hourly.times[i]), time > now {
                 hourlyForecast.append(HourlyWeather(
                     time: time,
                     temperature: response.hourly.temperatures[i],
@@ -74,8 +76,8 @@ actor WeatherService {
             temperature: response.current.temperature,
             condition: WeatherCondition.fromCode(response.current.weatherCode),
             locationName: locationName,
-            sunrise: formatter.date(from: response.daily.sunrise.first ?? "") ?? Date(),
-            sunset: formatter.date(from: response.daily.sunset.first ?? "") ?? Date(),
+            sunrise: dateTimeFormatter.date(from: response.daily.sunrise.first ?? "") ?? Date(),
+            sunset: dateTimeFormatter.date(from: response.daily.sunset.first ?? "") ?? Date(),
             feelsLike: response.current.apparentTemperature,
             humidity: response.current.humidity,
             highTemp: response.daily.maxTemps.first ?? response.current.temperature,
