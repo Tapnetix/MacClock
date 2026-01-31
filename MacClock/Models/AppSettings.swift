@@ -52,6 +52,26 @@ final class AppSettings {
         didSet { defaults.set(useCelsius, forKey: "useCelsius") }
     }
 
+    var weatherDetailEnabled: Bool {
+        didSet { defaults.set(weatherDetailEnabled, forKey: "weatherDetailEnabled") }
+    }
+
+    var weatherShowCurrentDetails: Bool {
+        didSet { defaults.set(weatherShowCurrentDetails, forKey: "weatherShowCurrentDetails") }
+    }
+
+    var weatherShowSunriseSunset: Bool {
+        didSet { defaults.set(weatherShowSunriseSunset, forKey: "weatherShowSunriseSunset") }
+    }
+
+    var weatherShowHourly: Bool {
+        didSet { defaults.set(weatherShowHourly, forKey: "weatherShowHourly") }
+    }
+
+    var weatherShowDaily: Bool {
+        didSet { defaults.set(weatherShowDaily, forKey: "weatherShowDaily") }
+    }
+
     var windowLevel: WindowLevel {
         didSet { defaults.set(windowLevel.rawValue, forKey: "windowLevel") }
     }
@@ -262,6 +282,11 @@ final class AppSettings {
         self.use24Hour = defaults.bool(forKey: "use24Hour")
         self.showSeconds = defaults.object(forKey: "showSeconds") as? Bool ?? true
         self.useCelsius = defaults.bool(forKey: "useCelsius")
+        self.weatherDetailEnabled = defaults.object(forKey: "weatherDetailEnabled") as? Bool ?? true
+        self.weatherShowCurrentDetails = defaults.object(forKey: "weatherShowCurrentDetails") as? Bool ?? true
+        self.weatherShowSunriseSunset = defaults.object(forKey: "weatherShowSunriseSunset") as? Bool ?? true
+        self.weatherShowHourly = defaults.object(forKey: "weatherShowHourly") as? Bool ?? true
+        self.weatherShowDaily = defaults.object(forKey: "weatherShowDaily") as? Bool ?? true
         self.windowLevel = WindowLevel(rawValue: defaults.string(forKey: "windowLevel") ?? "") ?? .normal
         self.useAutoLocation = defaults.object(forKey: "useAutoLocation") as? Bool ?? true
         self.manualLocationName = defaults.string(forKey: "manualLocationName") ?? ""
