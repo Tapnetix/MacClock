@@ -127,6 +127,7 @@ struct MainClockView: View {
     @State private var iCalService = ICalService()
     @State private var iCalEvents: [CalendarEvent] = []
     @State private var iCalTimer: Timer?
+    @State private var showWeatherDetail = false
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -174,13 +175,30 @@ struct MainClockView: View {
                     endPoint: .bottom
                 )
 
+                // Tap-to-dismiss layer for weather detail panel
+                if showWeatherDetail {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showWeatherDetail = false
+                            }
+                        }
+                }
+
             // Content
             HStack(spacing: 0) {
                 // Main content
                 VStack {
                     // Top bar: weather + calendar countdown
                     HStack {
-                        WeatherView(weather: weather, useCelsius: settings.useCelsius, theme: effectiveTheme)
+                        WeatherView(
+                            weather: weather,
+                            useCelsius: settings.useCelsius,
+                            settings: settings,
+                            theme: effectiveTheme,
+                            showDetailPanel: $showWeatherDetail
+                        )
 
                         if settings.calendarEnabled && settings.calendarShowCountdown {
                             CalendarCountdownView(event: nextEvent, theme: effectiveTheme)
