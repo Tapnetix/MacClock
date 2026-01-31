@@ -16,3 +16,17 @@ import Testing
 
     #expect(url.absoluteString.contains("temperature_unit=celsius"))
 }
+
+@Test func buildURLIncludesExtendedParams() {
+    let service = WeatherService()
+    let url = service.buildURL(latitude: 37.7749, longitude: -122.4194, useCelsius: true)
+    let urlString = url.absoluteString
+
+    #expect(urlString.contains("apparent_temperature"))
+    #expect(urlString.contains("relative_humidity_2m"))
+    #expect(urlString.contains("temperature_2m_max"))
+    #expect(urlString.contains("temperature_2m_min"))
+    #expect(urlString.contains("hourly="))
+    #expect(urlString.contains("forecast_days=3"))
+    #expect(urlString.contains("forecast_hours=6"))
+}
