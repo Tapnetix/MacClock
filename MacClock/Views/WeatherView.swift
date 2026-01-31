@@ -8,29 +8,29 @@ struct WeatherView: View {
     @Binding var showDetailPanel: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main weather display (clickable)
-            weatherDisplay
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if settings.weatherDetailEnabled && weather != nil {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            showDetailPanel.toggle()
-                        }
+        // Main weather display (clickable)
+        weatherDisplay
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if settings.weatherDetailEnabled && weather != nil {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showDetailPanel.toggle()
                     }
                 }
-
-            // Dropdown panel
-            if showDetailPanel, let weather = weather {
-                WeatherDetailPanel(
-                    weather: weather,
-                    useCelsius: useCelsius,
-                    settings: settings,
-                    theme: theme
-                )
-                .transition(.move(edge: .top).combined(with: .opacity))
             }
-        }
+            .overlay(alignment: .topLeading) {
+                // Dropdown panel - overlays content below, doesn't shift layout
+                if showDetailPanel, let weather = weather {
+                    WeatherDetailPanel(
+                        weather: weather,
+                        useCelsius: useCelsius,
+                        settings: settings,
+                        theme: theme
+                    )
+                    .offset(y: 28) // Position below the weather display
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
+                }
+            }
     }
 
     @ViewBuilder
