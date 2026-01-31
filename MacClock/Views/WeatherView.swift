@@ -120,7 +120,7 @@ struct WeatherDetailPanel: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color.black.opacity(0.3))
+        .background(Color.black.opacity(0.85))
         .cornerRadius(6)
         .padding(.top, 4)
     }
