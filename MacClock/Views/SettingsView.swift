@@ -176,6 +176,27 @@ struct GeneralTabView: View {
             .pickerStyle(.radioGroup)
             .labelsHidden()
         }
+
+        SettingsSection(title: "Weather Details") {
+            Toggle("Enable weather detail panel", isOn: $settings.weatherDetailEnabled)
+                .help("Click on temperature to show/hide detailed forecast")
+
+            if settings.weatherDetailEnabled {
+                Text("Show in panel:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+
+                Toggle("Current conditions (feels like, humidity, high/low)", isOn: $settings.weatherShowCurrentDetails)
+                    .padding(.leading, 16)
+                Toggle("Sunrise & sunset", isOn: $settings.weatherShowSunriseSunset)
+                    .padding(.leading, 16)
+                Toggle("Hourly forecast (6 hours)", isOn: $settings.weatherShowHourly)
+                    .padding(.leading, 16)
+                Toggle("Daily forecast (3 days)", isOn: $settings.weatherShowDaily)
+                    .padding(.leading, 16)
+            }
+        }
     }
 }
 
