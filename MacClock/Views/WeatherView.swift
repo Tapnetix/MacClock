@@ -159,15 +159,17 @@ struct WeatherDetailPanel: View {
     }
 
     private var hourlySection: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(weather.hourlyForecast.prefix(6).enumerated()), id: \.offset) { _, hour in
+        HStack(spacing: 6) {
+            // Show every 4th hour for 24-hour forecast (6 data points)
+            ForEach(Array(stride(from: 0, to: min(24, weather.hourlyForecast.count), by: 4)), id: \.self) { index in
+                let hour = weather.hourlyForecast[index]
                 VStack(spacing: 2) {
                     Text(timeFormatter.string(from: hour.time))
                         .font(.system(size: 9))
                         .foregroundStyle(theme.accentColor)
                     Image(systemName: hour.condition.sfSymbol)
                         .font(.system(size: 12))
-                        .frame(height: 16) // Fixed height for consistent alignment
+                        .frame(width: 24, height: 18, alignment: .top) // Align tops so clouds line up
                         .foregroundStyle(theme.primaryColor.opacity(0.9))
                     Text(tempString(hour.temperature))
                         .font(.system(size: 10))

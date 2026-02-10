@@ -12,8 +12,151 @@ struct CitySearchResult: Identifiable {
 }
 
 actor CitySearchService {
+    // Major cities not in IANA timezone database (they share a timezone with another city)
+    private static let additionalCities: [(city: String, country: String, tz: String)] = [
+        // India (all Asia/Kolkata)
+        ("Mumbai", "India", "Asia/Kolkata"),
+        ("Delhi", "India", "Asia/Kolkata"),
+        ("New Delhi", "India", "Asia/Kolkata"),
+        ("Bangalore", "India", "Asia/Kolkata"),
+        ("Bengaluru", "India", "Asia/Kolkata"),
+        ("Hyderabad", "India", "Asia/Kolkata"),
+        ("Chennai", "India", "Asia/Kolkata"),
+        ("Pune", "India", "Asia/Kolkata"),
+        ("Ahmedabad", "India", "Asia/Kolkata"),
+        ("Jaipur", "India", "Asia/Kolkata"),
+        ("Lucknow", "India", "Asia/Kolkata"),
+        ("Chandigarh", "India", "Asia/Kolkata"),
+        ("Kochi", "India", "Asia/Kolkata"),
+        ("Goa", "India", "Asia/Kolkata"),
+        ("Indore", "India", "Asia/Kolkata"),
+        ("Nagpur", "India", "Asia/Kolkata"),
+        ("Surat", "India", "Asia/Kolkata"),
+        ("Visakhapatnam", "India", "Asia/Kolkata"),
+        // China (most use Asia/Shanghai)
+        ("Beijing", "China", "Asia/Shanghai"),
+        ("Guangzhou", "China", "Asia/Shanghai"),
+        ("Shenzhen", "China", "Asia/Shanghai"),
+        ("Chengdu", "China", "Asia/Shanghai"),
+        ("Hangzhou", "China", "Asia/Shanghai"),
+        ("Wuhan", "China", "Asia/Shanghai"),
+        ("Nanjing", "China", "Asia/Shanghai"),
+        ("Xi'an", "China", "Asia/Shanghai"),
+        // Japan (Asia/Tokyo)
+        ("Osaka", "Japan", "Asia/Tokyo"),
+        ("Yokohama", "Japan", "Asia/Tokyo"),
+        ("Kyoto", "Japan", "Asia/Tokyo"),
+        ("Nagoya", "Japan", "Asia/Tokyo"),
+        ("Fukuoka", "Japan", "Asia/Tokyo"),
+        // South Korea (Asia/Seoul)
+        ("Busan", "South Korea", "Asia/Seoul"),
+        ("Incheon", "South Korea", "Asia/Seoul"),
+        // Pakistan (Asia/Karachi)
+        ("Lahore", "Pakistan", "Asia/Karachi"),
+        ("Islamabad", "Pakistan", "Asia/Karachi"),
+        // Bangladesh (Asia/Dhaka)
+        ("Chittagong", "Bangladesh", "Asia/Dhaka"),
+        // Indonesia (Asia/Jakarta)
+        ("Surabaya", "Indonesia", "Asia/Jakarta"),
+        ("Bandung", "Indonesia", "Asia/Jakarta"),
+        ("Bali", "Indonesia", "Asia/Makassar"),
+        // Thailand (Asia/Bangkok)
+        ("Chiang Mai", "Thailand", "Asia/Bangkok"),
+        ("Phuket", "Thailand", "Asia/Bangkok"),
+        // Vietnam (Asia/Ho_Chi_Minh)
+        ("Hanoi", "Vietnam", "Asia/Ho_Chi_Minh"),
+        // Philippines (Asia/Manila)
+        ("Cebu", "Philippines", "Asia/Manila"),
+        // UAE (Asia/Dubai)
+        ("Abu Dhabi", "UAE", "Asia/Dubai"),
+        // Saudi Arabia (Asia/Riyadh)
+        ("Jeddah", "Saudi Arabia", "Asia/Riyadh"),
+        ("Mecca", "Saudi Arabia", "Asia/Riyadh"),
+        // Turkey (Europe/Istanbul)
+        ("Ankara", "Turkey", "Europe/Istanbul"),
+        ("Antalya", "Turkey", "Europe/Istanbul"),
+        ("Izmir", "Turkey", "Europe/Istanbul"),
+        // Russia
+        ("St Petersburg", "Russia", "Europe/Moscow"),
+        ("Saint Petersburg", "Russia", "Europe/Moscow"),
+        // UK (Europe/London)
+        ("Manchester", "UK", "Europe/London"),
+        ("Birmingham", "UK", "Europe/London"),
+        ("Edinburgh", "UK", "Europe/London"),
+        ("Glasgow", "UK", "Europe/London"),
+        ("Liverpool", "UK", "Europe/London"),
+        // Germany (Europe/Berlin)
+        ("Munich", "Germany", "Europe/Berlin"),
+        ("Frankfurt", "Germany", "Europe/Berlin"),
+        ("Hamburg", "Germany", "Europe/Berlin"),
+        ("Cologne", "Germany", "Europe/Berlin"),
+        // France (Europe/Paris)
+        ("Lyon", "France", "Europe/Paris"),
+        ("Marseille", "France", "Europe/Paris"),
+        ("Nice", "France", "Europe/Paris"),
+        // Italy (Europe/Rome)
+        ("Milan", "Italy", "Europe/Rome"),
+        ("Naples", "Italy", "Europe/Rome"),
+        ("Florence", "Italy", "Europe/Rome"),
+        ("Venice", "Italy", "Europe/Rome"),
+        // Spain (Europe/Madrid)
+        ("Barcelona", "Spain", "Europe/Madrid"),
+        ("Valencia", "Spain", "Europe/Madrid"),
+        ("Seville", "Spain", "Europe/Madrid"),
+        // Netherlands (Europe/Amsterdam)
+        ("Rotterdam", "Netherlands", "Europe/Amsterdam"),
+        // Brazil (America/Sao_Paulo)
+        ("Rio de Janeiro", "Brazil", "America/Sao_Paulo"),
+        ("Brasilia", "Brazil", "America/Sao_Paulo"),
+        // USA
+        ("San Francisco", "USA", "America/Los_Angeles"),
+        ("Seattle", "USA", "America/Los_Angeles"),
+        ("Las Vegas", "USA", "America/Los_Angeles"),
+        ("Portland", "USA", "America/Los_Angeles"),
+        ("San Diego", "USA", "America/Los_Angeles"),
+        ("Dallas", "USA", "America/Chicago"),
+        ("Houston", "USA", "America/Chicago"),
+        ("Austin", "USA", "America/Chicago"),
+        ("San Antonio", "USA", "America/Chicago"),
+        ("Minneapolis", "USA", "America/Chicago"),
+        ("Miami", "USA", "America/New_York"),
+        ("Atlanta", "USA", "America/New_York"),
+        ("Boston", "USA", "America/New_York"),
+        ("Philadelphia", "USA", "America/New_York"),
+        ("Washington DC", "USA", "America/New_York"),
+        ("Charlotte", "USA", "America/New_York"),
+        ("Orlando", "USA", "America/New_York"),
+        // Canada
+        ("Montreal", "Canada", "America/Toronto"),
+        ("Calgary", "Canada", "America/Edmonton"),
+        ("Ottawa", "Canada", "America/Toronto"),
+        // Australia
+        ("Melbourne", "Australia", "Australia/Melbourne"),
+        ("Brisbane", "Australia", "Australia/Brisbane"),
+        ("Perth", "Australia", "Australia/Perth"),
+        ("Adelaide", "Australia", "Australia/Adelaide"),
+        ("Gold Coast", "Australia", "Australia/Brisbane"),
+        // New Zealand (Pacific/Auckland)
+        ("Wellington", "New Zealand", "Pacific/Auckland"),
+        ("Christchurch", "New Zealand", "Pacific/Auckland"),
+        // South Africa (Africa/Johannesburg)
+        ("Cape Town", "South Africa", "Africa/Johannesburg"),
+        ("Durban", "South Africa", "Africa/Johannesburg"),
+        ("Pretoria", "South Africa", "Africa/Johannesburg"),
+        // Egypt (Africa/Cairo)
+        ("Alexandria", "Egypt", "Africa/Cairo"),
+        // Nigeria (Africa/Lagos)
+        ("Abuja", "Nigeria", "Africa/Lagos"),
+        // Kenya (Africa/Nairobi)
+        ("Mombasa", "Kenya", "Africa/Nairobi"),
+        // Morocco (Africa/Casablanca)
+        ("Marrakech", "Morocco", "Africa/Casablanca"),
+        ("Rabat", "Morocco", "Africa/Casablanca"),
+    ]
+
     private lazy var allTimezones: [CitySearchResult] = {
         var results: [CitySearchResult] = []
+        var seenCities = Set<String>() // "cityname_tz" to avoid duplicates
 
         for identifier in TimeZone.knownTimeZoneIdentifiers {
             // Skip generic timezones like "GMT", "UTC", etc.
@@ -31,10 +174,25 @@ actor CitySearchService {
 
             let countryName = regionToCountry(region, cityPart: cityPart)
 
+            let key = "\(cityName.lowercased())_\(identifier)"
+            seenCities.insert(key)
+
             results.append(CitySearchResult(
                 cityName: cityName,
                 countryName: countryName,
                 timezoneIdentifier: identifier
+            ))
+        }
+
+        // Add supplementary cities
+        for entry in Self.additionalCities {
+            let key = "\(entry.city.lowercased())_\(entry.tz)"
+            guard !seenCities.contains(key) else { continue }
+            seenCities.insert(key)
+            results.append(CitySearchResult(
+                cityName: entry.city,
+                countryName: entry.country,
+                timezoneIdentifier: entry.tz
             ))
         }
 

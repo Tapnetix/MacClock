@@ -1,14 +1,22 @@
 import Foundation
 import EventKit
+import CoreGraphics
 
-struct CalendarEvent: Identifiable {
+struct CalendarEvent: Identifiable, Codable {
     let id: String
     let title: String
     let startDate: Date
     let endDate: Date
     let calendarTitle: String
-    let calendarColor: CGColor?
     let isAllDay: Bool
+
+    // Store color as hex string for Codable support
+    private let colorHex: String?
+
+    var calendarColor: CGColor? {
+        guard let hex = colorHex else { return nil }
+        return CGColor.fromHex(hex)
+    }
 
     var timeUntilStart: TimeInterval {
         startDate.timeIntervalSinceNow
@@ -38,7 +46,7 @@ struct CalendarEvent: Identifiable {
         self.startDate = event.startDate
         self.endDate = event.endDate
         self.calendarTitle = event.calendar?.title ?? ""
-        self.calendarColor = event.calendar?.cgColor
+        self.colorHex = event.calendar?.cgColor?.toHex()
         self.isAllDay = event.isAllDay
     }
 
@@ -48,7 +56,33 @@ struct CalendarEvent: Identifiable {
         self.startDate = startDate
         self.endDate = endDate
         self.calendarTitle = calendarTitle
-        self.calendarColor = calendarColor
+        self.colorHex = calendarColor?.toHex()
         self.isAllDay = isAllDay
+    }
+}
+
+// MARK: - CGColor Hex Conversion
+
+extension CGColor {
+    func toHex() -> String? {
+        guard let components = self.components, components.count >= 3 else { return nil }
+        let r = Int(components[0] * 255)
+        let g = Int(components[1] * 255)
+        let b = Int(components[2] * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
+    static func fromHex(_ hex: String) -> CGColor? {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+        let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(rgb & 0x0000FF) / 255.0
+
+        return CGColor(red: red, green: green, blue: blue, alpha: 1.0)
     }
 }

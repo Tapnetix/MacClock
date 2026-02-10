@@ -513,8 +513,33 @@ struct WorldClocksTabView: View {
 
         if settings.worldClocksEnabled {
             SettingsSection(title: "Cities") {
-                ForEach(settings.worldClocks) { clock in
-                    HStack {
+                ForEach(Array(settings.worldClocks.enumerated()), id: \.element.id) { index, clock in
+                    HStack(spacing: 8) {
+                        // Move up/down buttons
+                        VStack(spacing: 0) {
+                            Button {
+                                guard index > 0 else { return }
+                                settings.worldClocks.swapAt(index, index - 1)
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index > 0 ? .secondary : .quaternary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == 0)
+
+                            Button {
+                                guard index < settings.worldClocks.count - 1 else { return }
+                                settings.worldClocks.swapAt(index, index + 1)
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index < settings.worldClocks.count - 1 ? .secondary : .quaternary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index >= settings.worldClocks.count - 1)
+                        }
+
                         Text(clock.cityName)
                         Spacer()
                         Text(clock.timezoneAbbreviation)
@@ -1120,6 +1145,19 @@ struct NewsTabView: View {
             Toggle("Enable News Ticker", isOn: $settings.newsTickerEnabled)
 
             if settings.newsTickerEnabled {
+                LabeledContent("Max Age") {
+                    Picker("", selection: $settings.newsMaxAgeDays) {
+                        Text("1 day").tag(1)
+                        Text("3 days").tag(3)
+                        Text("7 days").tag(7)
+                        Text("14 days").tag(14)
+                        Text("30 days").tag(30)
+                        Text("No limit").tag(0)
+                    }
+                    .labelsHidden()
+                    .frame(width: 120)
+                }
+
                 LabeledContent("Style") {
                     Picker("", selection: $settings.newsTickerStyle) {
                         ForEach(NewsTickerStyle.allCases, id: \.self) { style in

@@ -246,7 +246,7 @@ struct MainClockView: View {
                                 settings: settings,
                                 theme: effectiveTheme
                             )
-                            .frame(width: 180) // Fixed width for compact panel
+                            .frame(width: 220) // Fixed width to fit hourly times
                             .padding(.top, 44) // Below weather display
                             .padding(.leading, 16)
                             Spacer()
@@ -363,6 +363,7 @@ struct MainClockView: View {
             }
 
             // Start alarm monitoring
+            alarmService.outputDeviceUID = settings.alarmOutputDeviceUID
             alarmService.startMonitoring(alarms: settings.alarms)
         }
         .onDisappear {
@@ -410,16 +411,24 @@ struct MainClockView: View {
                 Task { await loadNews() }
             }
         }
+        .onChange(of: settings.newsMaxAgeDays) { _, _ in
+            Task { await loadNews() }
+        }
         .onChange(of: settings.calendarEnabled) { _, enabled in
             if enabled {
                 loadCalendarEvents()
             }
         }
         .onChange(of: settings.iCalFeeds) { _, _ in
+            // Clear cache when feeds change (URL updated, feed added/removed)
+            iCalService.clearCache()
             loadCalendarEvents()
         }
         .onChange(of: settings.alarms) { _, newAlarms in
             alarmService.startMonitoring(alarms: newAlarms)
+        }
+        .onChange(of: settings.alarmOutputDeviceUID) { _, newUID in
+            alarmService.outputDeviceUID = newUID
         }
     }
 
@@ -526,19 +535,36 @@ struct MainClockView: View {
     }
 
     private func loadNews() async {
-        newsItems = await newsService.fetchNews(from: settings.newsFeeds)
+        let allItems = await newsService.fetchNews(from: settings.newsFeeds)
+        let maxAge = settings.newsMaxAgeDays
+        if maxAge > 0, let cutoff = Calendar.current.date(byAdding: .day, value: -maxAge, to: Date()) {
+            newsItems = allItems.filter { item in
+                guard let date = item.publishedDate else { return false }
+                return date >= cutoff
+            }
+        } else {
+            newsItems = allItems
+        }
     }
 
     private func loadCalendarEvents() {
-        // Local calendar events - show immediately
-        let localEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
-        todayEvents = localEvents.sorted { $0.startDate < $1.startDate }
-
-        // Update next event from local events first
+        // Local calendar events - show immediately, filter out ended events
         let now = Date()
+        let localEvents = calendarService.fetchTodayEvents(from: settings.selectedCalendarIDs)
+            .filter { $0.endDate > now }
+
+        // Load cached iCal events for immediate display
+        let cachedEvents = iCalService.loadCachedEvents()
+
+        // Merge local and cached events for immediate display
+        var allEvents = localEvents + cachedEvents
+        allEvents = deduplicateEvents(allEvents)
+        todayEvents = allEvents.sorted { $0.startDate < $1.startDate }
+
+        // Update next event
         nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
 
-        // Fetch iCal events asynchronously and merge
+        // Fetch fresh iCal events asynchronously
         guard !settings.iCalFeeds.isEmpty else { return }
 
         Task {
@@ -549,22 +575,40 @@ struct MainClockView: View {
             for feed in settings.iCalFeeds where feed.isEnabled {
                 do {
                     let events = try await iCalService.fetchEvents(from: feed)
-                    // Filter to today's events
-                    let todayEvents = events.filter { $0.startDate >= today && $0.startDate < tomorrow }
+                    // Filter to today's events that haven't ended yet
+                    let now = Date()
+                    let todayEvents = events.filter { $0.startDate >= today && $0.startDate < tomorrow && $0.endDate > now }
                     fetchedEvents.append(contentsOf: todayEvents)
                 } catch {
                     print("Failed to fetch iCal feed \(feed.name): \(error)")
                 }
             }
 
+            // Cache the fetched events
+            iCalService.cacheEvents(fetchedEvents)
+
             await MainActor.run {
                 iCalEvents = fetchedEvents
-                // Merge local and iCal events, sorted by start time
-                todayEvents = (localEvents + fetchedEvents).sorted { $0.startDate < $1.startDate }
-                // Update next event to include iCal events
+                // Merge local and fresh iCal events
+                var allEvents = localEvents + fetchedEvents
+                allEvents = deduplicateEvents(allEvents)
+                todayEvents = allEvents.sorted { $0.startDate < $1.startDate }
+                // Update next event
                 let now = Date()
                 nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
             }
+        }
+    }
+
+    private func deduplicateEvents(_ events: [CalendarEvent]) -> [CalendarEvent] {
+        var seen = Set<String>()
+        return events.filter { event in
+            let key = "\(event.title)_\(Int(event.startDate.timeIntervalSince1970 / 60))"
+            if seen.contains(key) {
+                return false
+            }
+            seen.insert(key)
+            return true
         }
     }
 }

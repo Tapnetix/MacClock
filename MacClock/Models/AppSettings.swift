@@ -222,6 +222,10 @@ final class AppSettings {
         didSet { defaults.set(newsRotateInterval, forKey: "newsRotateInterval") }
     }
 
+    var newsMaxAgeDays: Int {
+        didSet { defaults.set(newsMaxAgeDays, forKey: "newsMaxAgeDays") }
+    }
+
     var calendarEnabled: Bool {
         didSet { defaults.set(calendarEnabled, forKey: "calendarEnabled") }
     }
@@ -256,6 +260,10 @@ final class AppSettings {
                 defaults.set(data, forKey: "alarms")
             }
         }
+    }
+
+    var alarmOutputDeviceUID: String {
+        didSet { defaults.set(alarmOutputDeviceUID, forKey: "alarmOutputDeviceUID") }
     }
 
     var windowFrame: NSRect {
@@ -335,6 +343,7 @@ final class AppSettings {
         self.newsRefreshInterval = defaults.object(forKey: "newsRefreshInterval") as? Double ?? 15.0
         self.newsScrollSpeed = defaults.object(forKey: "newsScrollSpeed") as? Double ?? 50.0
         self.newsRotateInterval = defaults.object(forKey: "newsRotateInterval") as? Double ?? 10.0
+        self.newsMaxAgeDays = defaults.object(forKey: "newsMaxAgeDays") as? Int ?? 3
         self.calendarEnabled = defaults.bool(forKey: "calendarEnabled")
         self.calendarShowCountdown = defaults.object(forKey: "calendarShowCountdown") as? Bool ?? true
         self.calendarShowAgenda = defaults.bool(forKey: "calendarShowAgenda")
@@ -352,5 +361,6 @@ final class AppSettings {
         } else {
             self.alarms = []
         }
+        self.alarmOutputDeviceUID = defaults.string(forKey: "alarmOutputDeviceUID") ?? ""
     }
 }

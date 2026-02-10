@@ -144,12 +144,14 @@ struct AlarmsTabView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
-                        ForEach($settings.alarms) { $alarm in
+                        ForEach(settings.alarms) { alarm in
                             AlarmRow(
-                                alarm: $alarm,
+                                alarm: bindingForAlarm(alarm),
                                 onEdit: { onEditAlarm(alarm) },
                                 onDelete: {
-                                    settings.alarms.removeAll { $0.id == alarm.id }
+                                    withAnimation {
+                                        settings.alarms.removeAll { $0.id == alarm.id }
+                                    }
                                 }
                             )
                         }
@@ -167,6 +169,19 @@ struct AlarmsTabView: View {
             }
             .padding()
         }
+    }
+
+    private func bindingForAlarm(_ alarm: Alarm) -> Binding<Alarm> {
+        Binding(
+            get: {
+                settings.alarms.first { $0.id == alarm.id } ?? alarm
+            },
+            set: { newValue in
+                if let index = settings.alarms.firstIndex(where: { $0.id == alarm.id }) {
+                    settings.alarms[index] = newValue
+                }
+            }
+        )
     }
 }
 
@@ -530,6 +545,17 @@ struct AlarmEditView: View {
                         }
                     }
 
+                    // Output Device
+                    AlarmSection(title: "Output Device") {
+                        Picker("", selection: $settings.alarmOutputDeviceUID) {
+                            Text("System Default").tag("")
+                            ForEach(AlarmService.availableOutputDevices()) { device in
+                                Text(device.name).tag(device.id)
+                            }
+                        }
+                        .labelsHidden()
+                    }
+
                     // Snooze
                     AlarmSection(title: "Snooze Duration") {
                         Picker("", selection: $snoozeDuration) {
@@ -609,6 +635,9 @@ struct AlarmEditView: View {
         do {
             previewPlayer = try AVAudioPlayer(contentsOf: url)
             previewPlayer?.numberOfLoops = 0  // Play once
+            if !settings.alarmOutputDeviceUID.isEmpty {
+                previewPlayer?.currentDevice = settings.alarmOutputDeviceUID
+            }
             previewPlayer?.play()
             isPreviewPlaying = true
 

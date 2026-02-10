@@ -23,66 +23,78 @@ struct AnalogClockView: View {
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
-    private var clockSize: CGFloat {
-        settings.clockFontSize * 2.5
-    }
-
     private var dateFontSize: CGFloat {
         max(14, settings.clockFontSize / 4.8)
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Clock face
-            ZStack {
-                // Outer ring
-                Circle()
-                    .stroke(theme.accentColor.opacity(0.3), lineWidth: 2)
-                    .frame(width: clockSize, height: clockSize)
+        GeometryReader { geometry in
+            // Calculate clock size based on available space, keeping it square
+            let availableWidth = geometry.size.width
+            let availableHeight = geometry.size.height - 40 // Leave room for date
+            let availableSize = min(availableWidth, availableHeight)
+            let desiredSize = settings.clockFontSize * 2.5
+            let clockSize = min(desiredSize, availableSize * 0.85)
 
-                // Hour markers
-                ForEach(0..<12, id: \.self) { hour in
-                    hourMarker(for: hour)
-                }
+            VStack(spacing: 8) {
+                // Clock face - use fixed aspect ratio to keep it circular
+                ZStack {
+                    // Outer ring with glow for visibility
+                    Circle()
+                        .stroke(
+                            theme.primaryColor.opacity(0.5),
+                            lineWidth: max(1.5, clockSize * 0.008)
+                        )
+                        .shadow(color: theme.primaryColor.opacity(0.3), radius: 4)
+                        .shadow(color: .black.opacity(0.5), radius: 2)
 
-                // Hour hand
-                ClockHand(
-                    length: clockSize * 0.25,
-                    width: 4,
-                    color: theme.primaryColor,
-                    angle: hourAngle
-                )
+                    // Hour markers
+                    ForEach(0..<12, id: \.self) { hour in
+                        hourMarker(for: hour, clockSize: clockSize)
+                    }
 
-                // Minute hand
-                ClockHand(
-                    length: clockSize * 0.35,
-                    width: 3,
-                    color: theme.primaryColor,
-                    angle: minuteAngle
-                )
-
-                // Second hand (if showSeconds enabled)
-                if settings.showSeconds {
+                    // Hour hand
                     ClockHand(
-                        length: clockSize * 0.4,
-                        width: 1,
-                        color: theme.accentColor,
-                        angle: secondAngle
+                        length: clockSize * 0.25,
+                        width: max(2, clockSize * 0.016),
+                        color: theme.primaryColor,
+                        angle: hourAngle
                     )
+
+                    // Minute hand
+                    ClockHand(
+                        length: clockSize * 0.35,
+                        width: max(2, clockSize * 0.012),
+                        color: theme.primaryColor,
+                        angle: minuteAngle
+                    )
+
+                    // Second hand (if showSeconds enabled)
+                    if settings.showSeconds {
+                        ClockHand(
+                            length: clockSize * 0.4,
+                            width: 1,
+                            color: theme.accentColor,
+                            angle: secondAngle
+                        )
+                    }
+
+                    // Center dot
+                    Circle()
+                        .fill(theme.primaryColor)
+                        .frame(width: max(4, clockSize * 0.03), height: max(4, clockSize * 0.03))
                 }
+                .frame(width: clockSize, height: clockSize)
+                .aspectRatio(1, contentMode: .fit)
 
-                // Center dot
-                Circle()
-                    .fill(theme.primaryColor)
-                    .frame(width: 8, height: 8)
+                // Date display (same style as digital)
+                Text(dateString)
+                    .font(.system(size: min(dateFontSize, clockSize * 0.08), weight: .medium))
+                    .foregroundStyle(theme.accentColor)
+                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
             }
-            .frame(width: clockSize, height: clockSize)
-
-            // Date display (same style as digital)
-            Text(dateString)
-                .font(.system(size: dateFontSize, weight: .medium))
-                .foregroundStyle(theme.accentColor)
-                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .offset(y: -20) // Move clock up slightly
         }
         .onReceive(timer) { _ in
             currentTime = Date()
@@ -92,10 +104,10 @@ struct AnalogClockView: View {
     // MARK: - Hour Markers
 
     @ViewBuilder
-    private func hourMarker(for hour: Int) -> some View {
+    private func hourMarker(for hour: Int, clockSize: CGFloat) -> some View {
         let isCardinal = hour == 0 || hour == 3 || hour == 6 || hour == 9
-        let markerLength: CGFloat = isCardinal ? 12 : 6
-        let markerWidth: CGFloat = isCardinal ? 3 : 2
+        let markerLength: CGFloat = isCardinal ? max(8, clockSize * 0.05) : max(4, clockSize * 0.025)
+        let markerWidth: CGFloat = isCardinal ? max(2, clockSize * 0.012) : max(1, clockSize * 0.008)
         let angle = Double(hour) * 30.0
 
         Rectangle()

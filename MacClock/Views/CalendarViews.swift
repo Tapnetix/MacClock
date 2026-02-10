@@ -4,22 +4,30 @@ struct CalendarCountdownView: View {
     let event: CalendarEvent?
     let theme: ColorTheme
 
+    private let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     var body: some View {
         if let event = event {
             HStack(spacing: 6) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 14))
-                    .foregroundStyle(theme.accentColor)
+                    .font(.system(size: 16))
+                    .foregroundStyle(theme.primaryColor.opacity(0.9))
 
                 Text(event.title)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(theme.primaryColor)
                     .lineLimit(1)
 
-                Text(event.countdownString)
-                    .font(.system(size: 12))
+                // Show actual time, not just countdown
+                Text(timeFormatter.string(from: event.startDate))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(theme.accentColor)
             }
+            .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
         }
     }
 }

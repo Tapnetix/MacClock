@@ -82,7 +82,7 @@ struct WorldClockItem: View {
                 .foregroundStyle(theme.accentColor)
 
             HStack(spacing: 4) {
-                Text(clock.currentTimeString(use24Hour: use24Hour))
+                Text(clock.currentTimeString(use24Hour: use24Hour, at: currentTime))
                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
                     .foregroundStyle(theme.primaryColor)
 
@@ -110,7 +110,7 @@ struct WorldClockItem: View {
                 }
             }
 
-            Text(clock.currentTimeString(use24Hour: use24Hour))
+            Text(clock.currentTimeString(use24Hour: use24Hour, at: currentTime))
                 .font(.system(size: 18, weight: .semibold, design: .monospaced))
                 .foregroundStyle(theme.primaryColor)
 

@@ -17,7 +17,7 @@ actor WeatherService {
             URLQueryItem(name: "temperature_unit", value: useCelsius ? "celsius" : "fahrenheit"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "3"),
-            URLQueryItem(name: "forecast_hours", value: "6")
+            URLQueryItem(name: "forecast_hours", value: "24")
         ]
         return components.url!
     }
@@ -49,7 +49,7 @@ actor WeatherService {
                     temperature: response.hourly.temperatures[i],
                     condition: WeatherCondition.fromCode(response.hourly.weatherCodes[i])
                 ))
-                if hourlyForecast.count >= 6 {
+                if hourlyForecast.count >= 24 {
                     break
                 }
             }

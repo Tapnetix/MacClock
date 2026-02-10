@@ -59,8 +59,9 @@ final class DimManager {
             currentDimLevel = shouldDimNow ? settings.autoDimLevel : 1.0
         }
 
-        // Handle auto-theme
+        // Handle theme selection
         if settings.autoThemeEnabled {
+            // Auto Theme Switching is enabled - use day/night themes based on autoThemeMode
             let isNight = Self.shouldDim(
                 at: Date(),
                 mode: settings.autoThemeMode,
@@ -70,7 +71,11 @@ final class DimManager {
                 dimEndHour: settings.dimEndHour
             )
             effectiveTheme = isNight ? settings.nightThemeAuto : settings.dayTheme
+        } else if settings.autoDimEnabled && isDimmed, let nightTheme = settings.nightTheme {
+            // Auto-Dim is enabled and we're dimmed - use the night theme from Auto-Dim settings
+            effectiveTheme = nightTheme
         } else {
+            // Use the regular color theme
             effectiveTheme = settings.colorTheme
         }
     }

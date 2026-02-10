@@ -31,12 +31,12 @@ struct WorldClock: Identifiable, Codable, Equatable {
         return 0
     }
 
-    func currentTimeString(use24Hour: Bool) -> String {
+    func currentTimeString(use24Hour: Bool, at date: Date = Date()) -> String {
         guard let tz = timezone else { return "--:--" }
         let formatter = DateFormatter()
         formatter.timeZone = tz
         formatter.dateFormat = use24Hour ? "HH:mm" : "h:mm a"
-        return formatter.string(from: Date())
+        return formatter.string(from: date)
     }
 
     func currentDate() -> Date {
