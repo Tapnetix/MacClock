@@ -5,6 +5,8 @@ struct AlarmFiringView: View {
     let onDismiss: () -> Void
     let onSnooze: () -> Void
     let theme: ColorTheme
+    var snoozeCount: Int = 0
+    var maxSnoozes: Int = 10
 
     @State private var pulseOpacity = 1.0
 
@@ -48,9 +50,10 @@ struct AlarmFiringView: View {
                         Text("Snooze")
                             .font(.caption)
                     }
-                    .foregroundStyle(theme.accentColor)
+                    .foregroundStyle(snoozeCount < maxSnoozes ? theme.accentColor : theme.accentColor.opacity(0.3))
                 }
                 .buttonStyle(.plain)
+                .disabled(snoozeCount >= maxSnoozes)
 
                 Button {
                     onDismiss()
@@ -66,9 +69,15 @@ struct AlarmFiringView: View {
                 .buttonStyle(.plain)
             }
 
-            Text("Snooze for \(alarm.snoozeDuration) minutes")
-                .font(.caption)
-                .foregroundStyle(theme.accentColor.opacity(0.6))
+            if snoozeCount < maxSnoozes {
+                Text("Snooze for \(alarm.snoozeDuration) min (\(maxSnoozes - snoozeCount) left)")
+                    .font(.caption)
+                    .foregroundStyle(theme.accentColor.opacity(0.6))
+            } else {
+                Text("No snoozes remaining")
+                    .font(.caption)
+                    .foregroundStyle(.red.opacity(0.8))
+            }
 
             Spacer()
         }

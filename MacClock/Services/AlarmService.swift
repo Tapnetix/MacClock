@@ -13,10 +13,15 @@ struct AudioOutputDevice: Identifiable, Hashable {
 final class AlarmService {
     private(set) var activeAlarm: Alarm?
     private(set) var isAlarmFiring = false
+    private(set) var snoozeCount = 0
+    private static let maxSnoozes = 10
+    private static let autoSnoozeSeconds: TimeInterval = 120 // 2 minutes
     private var audioPlayer: AVAudioPlayer?
     private var checkTimer: Timer?
+    private var autoSnoozeTimer: Timer?
     private var snoozeUntil: Date?
     var outputDeviceUID: String = ""  // Empty = system default
+    var onAlarmDismissed: ((Alarm) -> Void)?  // Called when alarm is auto-dismissed
 
     init() {
         requestNotificationPermission()
@@ -40,6 +45,8 @@ final class AlarmService {
     func stopMonitoring() {
         checkTimer?.invalidate()
         checkTimer = nil
+        autoSnoozeTimer?.invalidate()
+        autoSnoozeTimer = nil
     }
 
     private func checkAlarms(_ alarms: [Alarm]) {
@@ -76,6 +83,33 @@ final class AlarmService {
         if let soundName = alarm.soundName {
             playSound(named: soundName)
         }
+
+        // Auto-snooze after 2 minutes if not dismissed
+        autoSnoozeTimer?.invalidate()
+        autoSnoozeTimer = Timer.scheduledTimer(withTimeInterval: Self.autoSnoozeSeconds, repeats: false) { [weak self] _ in
+            self?.autoSnooze()
+        }
+    }
+
+    private func autoSnooze() {
+        guard isAlarmFiring, let alarm = activeAlarm else { return }
+
+        if snoozeCount >= Self.maxSnoozes {
+            // Exceeded max snoozes — dismiss permanently
+            let alarmToDisable = alarm
+            dismissAlarm()
+            onAlarmDismissed?(alarmToDisable)
+            return
+        }
+
+        snoozeCount += 1
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isAlarmFiring = false
+
+        snoozeUntil = Date().addingTimeInterval(TimeInterval(alarm.snoozeDuration * 60))
+        activeAlarm = nil
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 
     private func sendNotification(for alarm: Alarm) {
@@ -118,16 +152,28 @@ final class AlarmService {
     }
 
     func dismissAlarm() {
+        autoSnoozeTimer?.invalidate()
+        autoSnoozeTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
         isAlarmFiring = false
         activeAlarm = nil
+        snoozeCount = 0
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 
     func snoozeAlarm() {
         guard let alarm = activeAlarm else { return }
 
+        autoSnoozeTimer?.invalidate()
+        autoSnoozeTimer = nil
+
+        if snoozeCount >= Self.maxSnoozes {
+            dismissAlarm()
+            return
+        }
+
+        snoozeCount += 1
         audioPlayer?.stop()
         audioPlayer = nil
         isAlarmFiring = false

@@ -293,9 +293,14 @@ struct MainClockView: View {
                 if alarmService.isAlarmFiring, let alarm = alarmService.activeAlarm {
                     AlarmFiringView(
                         alarm: alarm,
-                        onDismiss: { alarmService.dismissAlarm() },
+                        onDismiss: {
+                            disableIfOneTime(alarm)
+                            alarmService.dismissAlarm()
+                        },
                         onSnooze: { alarmService.snoozeAlarm() },
-                        theme: effectiveTheme
+                        theme: effectiveTheme,
+                        snoozeCount: alarmService.snoozeCount,
+                        maxSnoozes: 10
                     )
                 }
         }
@@ -364,6 +369,13 @@ struct MainClockView: View {
 
             // Start alarm monitoring
             alarmService.outputDeviceUID = settings.alarmOutputDeviceUID
+            alarmService.onAlarmDismissed = { [weak settings] alarm in
+                guard let settings else { return }
+                guard alarm.repeatDays.isEmpty else { return }
+                if let index = settings.alarms.firstIndex(where: { $0.id == alarm.id }) {
+                    settings.alarms[index].isEnabled = false
+                }
+            }
             alarmService.startMonitoring(alarms: settings.alarms)
         }
         .onDisappear {
@@ -597,6 +609,13 @@ struct MainClockView: View {
                 let now = Date()
                 nextEvent = todayEvents.first { $0.startDate > now || ($0.startDate <= now && $0.endDate > now) }
             }
+        }
+    }
+
+    private func disableIfOneTime(_ alarm: Alarm) {
+        guard alarm.repeatDays.isEmpty else { return }
+        if let index = settings.alarms.firstIndex(where: { $0.id == alarm.id }) {
+            settings.alarms[index].isEnabled = false
         }
     }
 
