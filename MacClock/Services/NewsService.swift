@@ -9,6 +9,13 @@ actor NewsService: NSObject, XMLParserDelegate {
     private var currentSource = ""
     private var isInItem = false
 
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
+
     func fetchNews(from feeds: [NewsFeed]) async -> [NewsItem] {
         var allItems: [NewsItem] = []
 
@@ -26,7 +33,7 @@ actor NewsService: NSObject, XMLParserDelegate {
         guard let url = URL(string: feed.url) else { return nil }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await session.data(from: url)
             return parseFeed(data: data, source: feed.name)
         } catch {
             print("Failed to fetch feed \(feed.name): \(error)")

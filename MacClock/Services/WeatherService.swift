@@ -6,6 +6,13 @@ actor WeatherService {
     private var lastFetch: Date?
     private let cacheInterval: TimeInterval = 30 * 60 // 30 minutes
 
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
+
     nonisolated func buildURL(latitude: Double, longitude: Double, useCelsius: Bool) -> URL? {
         guard var components = URLComponents(string: baseURL) else { return nil }
         components.queryItems = [
@@ -33,7 +40,7 @@ actor WeatherService {
         guard let url = buildURL(latitude: latitude, longitude: longitude, useCelsius: useCelsius) else {
             throw WeatherError.invalidURL
         }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, _) = try await session.data(from: url)
         let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
 
         // Open-Meteo returns dates like "2026-01-31T07:32" (no seconds)

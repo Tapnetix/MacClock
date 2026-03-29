@@ -2,7 +2,12 @@ import Foundation
 import CoreGraphics
 
 actor ICalService {
-    private let session = URLSession.shared
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
     private let cacheKey = "cachedICalEvents"
     private let cacheDateKey = "cachedICalEventsDate"
     private let defaults = UserDefaults.standard
