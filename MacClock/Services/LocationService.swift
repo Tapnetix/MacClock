@@ -53,14 +53,18 @@ extension LocationService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else { return }
         currentLocation = location
-        continuation?.resume(returning: location)
-        continuation = nil
+        if let cont = continuation {
+            continuation = nil
+            cont.resume(returning: location)
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         self.error = error
-        continuation?.resume(throwing: error)
-        continuation = nil
+        if let cont = continuation {
+            continuation = nil
+            cont.resume(throwing: error)
+        }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
