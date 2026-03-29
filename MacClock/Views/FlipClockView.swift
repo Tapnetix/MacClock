@@ -231,121 +231,115 @@ struct FlipClockView: View {
 
     @State private var currentTime = Date()
     @State private var previousTime = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var lastSecond: Int = -1
+
+    private static let hour24Formatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH"; return f
+    }()
+    private static let hour12Formatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "hh"; return f
+    }()
+    private static let minuteFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "mm"; return f
+    }()
+    private static let secondFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "ss"; return f
+    }()
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE, MMMM d, yyyy"; return f
+    }()
 
     private var dateFontSize: CGFloat {
         max(14, settings.clockFontSize / 4.8)
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            // Calculate how many digit pairs we need
-            let pairCount: CGFloat = settings.showSeconds ? 3 : 2
-            // Each pair is roughly 2 * 0.65 * size wide, plus colons
-            let widthPerUnit: CGFloat = 1.6
-            let totalUnits = pairCount * widthPerUnit + (pairCount - 1) * 0.3
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in
+            let _ = updateTimes(context.date)
 
-            let maxWidthBasedSize = geometry.size.width / totalUnits
-            let maxHeightBasedSize = geometry.size.height * 0.7
+            GeometryReader { geometry in
+                let pairCount: CGFloat = settings.showSeconds ? 3 : 2
+                let widthPerUnit: CGFloat = 1.6
+                let totalUnits = pairCount * widthPerUnit + (pairCount - 1) * 0.3
 
-            let desiredSize = settings.clockFontSize * 0.9
-            let digitSize = min(desiredSize, min(maxWidthBasedSize, maxHeightBasedSize))
+                let maxWidthBasedSize = geometry.size.width / totalUnits
+                let maxHeightBasedSize = geometry.size.height * 0.7
 
-            VStack(spacing: 16) {
-                // Time display with flip digits
-                HStack(spacing: 0) {
-                    // Hours
-                    FlipDigitPair(
-                        value: hourString,
-                        previousValue: previousHourString,
-                        size: digitSize,
-                        theme: theme
-                    )
+                let desiredSize = settings.clockFontSize * 0.9
+                let digitSize = min(desiredSize, min(maxWidthBasedSize, maxHeightBasedSize))
 
-                    FlipColon(size: digitSize, theme: theme)
-
-                    // Minutes
-                    FlipDigitPair(
-                        value: minuteString,
-                        previousValue: previousMinuteString,
-                        size: digitSize,
-                        theme: theme
-                    )
-
-                    // Seconds (optional)
-                    if settings.showSeconds {
-                        FlipColon(size: digitSize, theme: theme)
-
+                VStack(spacing: 16) {
+                    HStack(spacing: 0) {
                         FlipDigitPair(
-                            value: secondString,
-                            previousValue: previousSecondString,
+                            value: hourString,
+                            previousValue: previousHourString,
                             size: digitSize,
                             theme: theme
                         )
-                    }
-                }
 
-                // Date display
-                Text(dateString)
-                    .font(.system(size: min(dateFontSize, digitSize * 0.2), weight: .medium))
-                    .foregroundStyle(theme.accentColor)
-                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                        FlipColon(size: digitSize, theme: theme)
+
+                        FlipDigitPair(
+                            value: minuteString,
+                            previousValue: previousMinuteString,
+                            size: digitSize,
+                            theme: theme
+                        )
+
+                        if settings.showSeconds {
+                            FlipColon(size: digitSize, theme: theme)
+
+                            FlipDigitPair(
+                                value: secondString,
+                                previousValue: previousSecondString,
+                                size: digitSize,
+                                theme: theme
+                            )
+                        }
+                    }
+
+                    Text(dateString)
+                        .font(.system(size: min(dateFontSize, digitSize * 0.2), weight: .medium))
+                        .foregroundStyle(theme.accentColor)
+                        .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onReceive(timer) { _ in
+    }
+
+    /// Called inside TimelineView closure to update previous/current time.
+    /// Uses `let _ =` discard pattern so SwiftUI evaluates it each frame.
+    private func updateTimes(_ date: Date) {
+        let second = Calendar.current.component(.second, from: date)
+        if second != lastSecond {
             previousTime = currentTime
-            currentTime = Date()
+            currentTime = date
+            lastSecond = second
         }
     }
 
     // MARK: - Current Time Strings
 
     private var hourString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = settings.use24Hour ? "HH" : "hh"
+        let formatter = settings.use24Hour ? Self.hour24Formatter : Self.hour12Formatter
         return formatter.string(from: currentTime)
     }
-
-    private var minuteString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "mm"
-        return formatter.string(from: currentTime)
-    }
-
-    private var secondString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ss"
-        return formatter.string(from: currentTime)
-    }
+    private var minuteString: String { Self.minuteFormatter.string(from: currentTime) }
+    private var secondString: String { Self.secondFormatter.string(from: currentTime) }
 
     // MARK: - Previous Time Strings
 
     private var previousHourString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = settings.use24Hour ? "HH" : "hh"
+        let formatter = settings.use24Hour ? Self.hour24Formatter : Self.hour12Formatter
         return formatter.string(from: previousTime)
     }
-
-    private var previousMinuteString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "mm"
-        return formatter.string(from: previousTime)
-    }
-
-    private var previousSecondString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ss"
-        return formatter.string(from: previousTime)
-    }
+    private var previousMinuteString: String { Self.minuteFormatter.string(from: previousTime) }
+    private var previousSecondString: String { Self.secondFormatter.string(from: previousTime) }
 
     // MARK: - Date String
 
-    private var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d, yyyy"
-        return formatter.string(from: currentTime)
-    }
+    private var dateString: String { Self.dateFormatter.string(from: currentTime) }
 }
 
 #Preview {
