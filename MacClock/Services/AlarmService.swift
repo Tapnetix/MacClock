@@ -9,6 +9,7 @@ struct AudioOutputDevice: Identifiable, Hashable {
     let name: String
 }
 
+@MainActor
 @Observable
 final class AlarmService {
     private(set) var activeAlarm: Alarm?
@@ -38,7 +39,9 @@ final class AlarmService {
     func startMonitoring(alarms: [Alarm]) {
         checkTimer?.invalidate()
         checkTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.checkAlarms(alarms)
+            Task { @MainActor in
+                self?.checkAlarms(alarms)
+            }
         }
     }
 
@@ -47,6 +50,8 @@ final class AlarmService {
         checkTimer = nil
         autoSnoozeTimer?.invalidate()
         autoSnoozeTimer = nil
+        audioPlayer?.stop()
+        audioPlayer = nil
     }
 
     private func checkAlarms(_ alarms: [Alarm]) {
@@ -87,7 +92,9 @@ final class AlarmService {
         // Auto-snooze after 2 minutes if not dismissed
         autoSnoozeTimer?.invalidate()
         autoSnoozeTimer = Timer.scheduledTimer(withTimeInterval: Self.autoSnoozeSeconds, repeats: false) { [weak self] _ in
-            self?.autoSnooze()
+            Task { @MainActor in
+                self?.autoSnooze()
+            }
         }
     }
 
