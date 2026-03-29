@@ -128,6 +128,7 @@ struct MainClockView: View {
     @State private var iCalEvents: [CalendarEvent] = []
     @State private var iCalTimer: Timer?
     @State private var showWeatherDetail = false
+    @State private var dockIconRenderer = DockIconRenderer()
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -320,7 +321,8 @@ struct MainClockView: View {
                 forName: NSWindow.didMoveNotification,
                 object: window,
                 queue: .main
-            ) { _ in
+            ) { [weak settings, weak window] _ in
+                guard let settings, let window else { return }
                 settings.windowFrame = window.frame
             }
 
@@ -328,7 +330,8 @@ struct MainClockView: View {
                 forName: NSWindow.didResizeNotification,
                 object: window,
                 queue: .main
-            ) { _ in
+            ) { [weak settings, weak window] _ in
+                guard let settings, let window else { return }
                 settings.windowFrame = window.frame
             }
         }
@@ -377,6 +380,10 @@ struct MainClockView: View {
                 }
             }
             alarmService.startMonitoring(alarms: settings.alarms)
+
+            // Start dynamic dock icon
+            dockIconRenderer.use24Hour = settings.use24Hour
+            dockIconRenderer.startUpdating()
         }
         .onDisappear {
             weatherTimer?.invalidate()
@@ -384,6 +391,7 @@ struct MainClockView: View {
             dimTimer?.invalidate()
             iCalTimer?.invalidate()
             alarmService.stopMonitoring()
+            dockIconRenderer.stopUpdating()
         }
         .onChange(of: settings.backgroundMode) { _, _ in
             loadInitialBackground()
@@ -441,6 +449,9 @@ struct MainClockView: View {
         }
         .onChange(of: settings.alarmOutputDeviceUID) { _, newUID in
             alarmService.outputDeviceUID = newUID
+        }
+        .onChange(of: settings.use24Hour) { _, newValue in
+            dockIconRenderer.use24Hour = newValue
         }
     }
 
