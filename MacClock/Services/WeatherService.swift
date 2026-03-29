@@ -6,8 +6,8 @@ actor WeatherService {
     private var lastFetch: Date?
     private let cacheInterval: TimeInterval = 30 * 60 // 30 minutes
 
-    nonisolated func buildURL(latitude: Double, longitude: Double, useCelsius: Bool) -> URL {
-        var components = URLComponents(string: baseURL)!
+    nonisolated func buildURL(latitude: Double, longitude: Double, useCelsius: Bool) -> URL? {
+        guard var components = URLComponents(string: baseURL) else { return nil }
         components.queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
@@ -19,7 +19,7 @@ actor WeatherService {
             URLQueryItem(name: "forecast_days", value: "3"),
             URLQueryItem(name: "forecast_hours", value: "24")
         ]
-        return components.url!
+        return components.url
     }
 
     func fetchWeather(latitude: Double, longitude: Double, locationName: String, useCelsius: Bool) async throws -> WeatherData {
@@ -30,7 +30,9 @@ actor WeatherService {
             return cached
         }
 
-        let url = buildURL(latitude: latitude, longitude: longitude, useCelsius: useCelsius)
+        guard let url = buildURL(latitude: latitude, longitude: longitude, useCelsius: useCelsius) else {
+            throw WeatherError.invalidURL
+        }
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
 
@@ -96,4 +98,8 @@ actor WeatherService {
         cachedWeather = nil
         lastFetch = nil
     }
+}
+
+enum WeatherError: Error {
+    case invalidURL
 }
