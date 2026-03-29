@@ -402,8 +402,8 @@ struct MainClockView: View {
         }
         .onChange(of: settings.customBackgroundPath) { _, newPath in
             if settings.backgroundMode == .custom {
-                let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
-                let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+                let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date()) ?? Date()
+                let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date()) ?? Date()
                 backgroundManager.updateBackground(
                     sunrise: sunrise,
                     sunset: sunset,
@@ -510,8 +510,8 @@ struct MainClockView: View {
                 currentNatureImage = await natureService.getNextImage()
             }
         case .timeOfDay, .custom:
-            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date())!
-            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!
+            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date()) ?? Date()
+            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date()) ?? Date()
             backgroundManager.updateBackground(
                 sunrise: sunrise,
                 sunset: sunset,
