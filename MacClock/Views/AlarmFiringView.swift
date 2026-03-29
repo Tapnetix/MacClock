@@ -54,6 +54,7 @@ struct AlarmFiringView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(snoozeCount >= maxSnoozes)
+                .accessibilityLabel("Snooze alarm for \(alarm.snoozeDuration) minutes")
 
                 Button {
                     onDismiss()
@@ -67,6 +68,7 @@ struct AlarmFiringView: View {
                     .foregroundStyle(theme.primaryColor)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss alarm")
             }
 
             if snoozeCount < maxSnoozes {

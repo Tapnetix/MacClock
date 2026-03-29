@@ -48,6 +48,7 @@ struct NewsTickerView: View {
                             .frame(width: 30, height: 30)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Previous headline")
                     .transition(.opacity)
                 }
 
@@ -74,6 +75,7 @@ struct NewsTickerView: View {
                             .frame(width: 30, height: 30)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Next headline")
                     .transition(.opacity)
                 }
             }
@@ -104,6 +106,7 @@ struct NewsTickerView: View {
                                 .frame(width: 30, height: 30)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Previous headline")
                         .transition(.opacity)
                     }
 
@@ -129,6 +132,7 @@ struct NewsTickerView: View {
                                 .frame(width: 30, height: 30)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Next headline")
                         .transition(.opacity)
                     }
                 }

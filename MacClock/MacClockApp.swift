@@ -269,6 +269,7 @@ struct MainClockView: View {
                                 .foregroundStyle(effectiveTheme.primaryColor.opacity(0.7))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Alarms")
                         Button {
                             openWindow(id: "settings")
                         } label: {
@@ -277,6 +278,7 @@ struct MainClockView: View {
                                 .foregroundStyle(.white.opacity(0.7))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Settings")
                     }
                     .padding()
                     Spacer()

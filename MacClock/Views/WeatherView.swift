@@ -18,6 +18,7 @@ struct WeatherView: View {
                     }
                 }
             }
+            .accessibilityLabel(weather.map { "Weather: \(Int($0.temperature.rounded()))°, \($0.locationName)" } ?? "Weather unavailable")
     }
 
     @ViewBuilder
@@ -40,6 +41,7 @@ struct WeatherView: View {
                     Image(systemName: showDetailPanel ? "chevron.up" : "chevron.down")
                         .font(.system(size: 10))
                         .foregroundStyle(theme.accentColor.opacity(0.6))
+                        .accessibilityLabel(showDetailPanel ? "Hide weather details" : "Show weather details")
                 }
             }
             .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
