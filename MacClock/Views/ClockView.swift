@@ -4,9 +4,6 @@ struct ClockView: View {
     let settings: AppSettings
     var theme: ColorTheme = .classicWhite
 
-    @State private var currentTime = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
     private var secondaryFontSize: CGFloat {
         settings.clockFontSize / 3.0
     }
@@ -15,65 +12,77 @@ struct ClockView: View {
         max(14, settings.clockFontSize / 4.8)
     }
 
+    // Cached formatters — these are expensive to create
+    private static let time24Formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    private static let time12Formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm"
+        return f
+    }()
+
+    private static let amPmFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "a"
+        return f
+    }()
+
+    private static let secondsFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "ss"
+        return f
+    }()
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, MMMM d, yyyy"
+        return f
+    }()
+
     var body: some View {
-        VStack(spacing: 8) {
-            // Time display
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                Text(timeString)
-                    .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
-                    .foregroundStyle(theme.primaryColor)
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in
+            let currentTime = context.date
 
-                // AM/PM and seconds stacked vertically to the right
-                VStack(alignment: .leading, spacing: 0) {
-                    if !settings.use24Hour {
-                        Text(amPmString)
-                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                            .foregroundStyle(theme.primaryColor)
-                    }
+            VStack(spacing: 8) {
+                // Time display
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text(timeString(from: currentTime))
+                        .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
+                        .foregroundStyle(theme.primaryColor)
 
-                    if settings.showSeconds {
-                        Text(secondsString)
-                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                            .foregroundStyle(theme.primaryColor.opacity(theme.secondaryOpacity))
+                    // AM/PM and seconds stacked vertically to the right
+                    VStack(alignment: .leading, spacing: 0) {
+                        if !settings.use24Hour {
+                            Text(Self.amPmFormatter.string(from: currentTime))
+                                .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
+                                .foregroundStyle(theme.primaryColor)
+                        }
+
+                        if settings.showSeconds {
+                            Text(Self.secondsFormatter.string(from: currentTime))
+                                .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
+                                .foregroundStyle(theme.primaryColor.opacity(theme.secondaryOpacity))
+                        }
                     }
+                    .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
                 }
-                .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
+
+                // Date display
+                Text(Self.dateFormatter.string(from: currentTime))
+                    .font(.system(size: dateFontSize, weight: .medium))
+                    .foregroundStyle(theme.accentColor)
+                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
             }
-
-            // Date display
-            Text(dateString)
-                .font(.system(size: dateFontSize, weight: .medium))
-                .foregroundStyle(theme.accentColor)
-                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
-        }
-        .onReceive(timer) { _ in
-            currentTime = Date()
         }
     }
 
-    private var timeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = settings.use24Hour ? "HH:mm" : "h:mm"
-        return formatter.string(from: currentTime)
-    }
-
-    private var amPmString: String {
-        if settings.use24Hour { return "" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "a"
-        return formatter.string(from: currentTime)
-    }
-
-    private var secondsString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ss"
-        return formatter.string(from: currentTime)
-    }
-
-    private var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d, yyyy"
-        return formatter.string(from: currentTime)
+    private func timeString(from date: Date) -> String {
+        let formatter = settings.use24Hour ? Self.time24Formatter : Self.time12Formatter
+        return formatter.string(from: date)
     }
 }
 
