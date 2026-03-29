@@ -147,6 +147,7 @@ struct NewsTickerView: View {
     // MARK: - Navigation
 
     private func navigatePrevious() {
+        guard !newsItems.isEmpty else { return }
         pauseAutoAdvance()
 
         if settings.newsTickerStyle == .rotating {
@@ -166,6 +167,7 @@ struct NewsTickerView: View {
     }
 
     private func navigateNext() {
+        guard !newsItems.isEmpty else { return }
         pauseAutoAdvance()
 
         if settings.newsTickerStyle == .rotating {
@@ -214,6 +216,7 @@ struct NewsTickerView: View {
     }
 
     private func startRotating() {
+        guard !newsItems.isEmpty else { return }
         rotateTimer = Timer.scheduledTimer(withTimeInterval: settings.newsRotateInterval, repeats: true) { _ in
             guard !isPaused else { return }
 
