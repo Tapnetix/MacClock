@@ -6,12 +6,7 @@ actor WeatherService {
     private var lastFetch: Date?
     private let cacheInterval: TimeInterval = 30 * 60 // 30 minutes
 
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        return URLSession(configuration: config)
-    }()
+    private let session = URLSession.standardConfigured
 
     nonisolated func buildURL(latitude: Double, longitude: Double, useCelsius: Bool) -> URL? {
         guard var components = URLComponents(string: baseURL) else { return nil }

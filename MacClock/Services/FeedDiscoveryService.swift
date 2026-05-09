@@ -1,12 +1,7 @@
 import Foundation
 
 actor FeedDiscoveryService {
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        return URLSession(configuration: config)
-    }()
+    private let session = URLSession.standardConfigured
 
     // MARK: - Input Detection
 

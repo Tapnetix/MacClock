@@ -9,12 +9,7 @@ actor NewsService: NSObject, XMLParserDelegate {
     private var currentSource = ""
     private var isInItem = false
 
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        return URLSession(configuration: config)
-    }()
+    private let session = URLSession.standardConfigured
 
     func fetchNews(from feeds: [NewsFeed]) async -> [NewsItem] {
         var allItems: [NewsItem] = []

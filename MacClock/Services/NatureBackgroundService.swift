@@ -5,12 +5,7 @@ actor NatureBackgroundService {
     private let cacheDirectory: URL
     private var cachedImages: [URL] = []
 
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        return URLSession(configuration: config)
-    }()
+    private let session = URLSession.standardConfigured
 
     // Curated nature/landscape image URLs from Unsplash (free to use)
     private let natureImageURLs = [
