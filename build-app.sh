@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Build the release executable
 swift build -c release
@@ -17,7 +18,7 @@ mkdir -p "$RESOURCES_DIR"
 # Copy executable
 cp ".build/release/$APP_NAME" "$MACOS_DIR/"
 
-# Copy resources from the build
+# Copy resources from the build (SPM bundle)
 if [ -d ".build/release/MacClock_MacClock.bundle/Contents/Resources" ]; then
     cp -R ".build/release/MacClock_MacClock.bundle/Contents/Resources/"* "$RESOURCES_DIR/"
 fi
@@ -27,45 +28,8 @@ if [ -d "MacClock/Resources" ]; then
     cp -R "MacClock/Resources/"* "$RESOURCES_DIR/"
 fi
 
-# Create Info.plist
-cat > "$CONTENTS_DIR/Info.plist" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>MacClock</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.local.MacClock</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>MacClock</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    <key>ATSApplicationFontsPath</key>
-    <string>Fonts</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>MacClock needs your location to show local weather conditions.</string>
-    <key>NSLocationUsageDescription</key>
-    <string>MacClock needs your location to show local weather conditions.</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-</dict>
-</plist>
-EOF
+# Copy authoritative Info.plist (single source of truth in MacClock/)
+cp "MacClock/Info.plist" "$CONTENTS_DIR/Info.plist"
 
 echo "Built $APP_DIR"
 echo "Run with: open $APP_DIR"
