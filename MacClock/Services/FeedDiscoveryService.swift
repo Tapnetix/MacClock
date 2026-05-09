@@ -49,8 +49,10 @@ actor FeedDiscoveryService {
             let feedURL: String
             if href.hasPrefix("http") {
                 feedURL = href
-            } else if href.hasPrefix("/") {
-                feedURL = baseURL.scheme! + "://" + baseURL.host! + href
+            } else if href.hasPrefix("/"),
+                      let scheme = baseURL.scheme,
+                      let host = baseURL.host {
+                feedURL = scheme + "://" + host + href
             } else {
                 feedURL = baseURL.absoluteString + "/" + href
             }
@@ -113,8 +115,12 @@ actor FeedDiscoveryService {
         let commonPaths = ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/feed/rss"]
         var feeds: [DiscoveredFeed] = []
 
+        guard let scheme = baseURL.scheme, let host = baseURL.host else {
+            return feeds
+        }
+
         for path in commonPaths {
-            let feedURL = baseURL.scheme! + "://" + baseURL.host! + path
+            let feedURL = scheme + "://" + host + path
             guard let url = URL(string: feedURL) else { continue }
 
             do {
