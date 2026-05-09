@@ -15,6 +15,7 @@ struct MacClockApp: App {
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        ICalService.purgeLegacyUserDefaultsCache()
         registerFonts()
     }
 

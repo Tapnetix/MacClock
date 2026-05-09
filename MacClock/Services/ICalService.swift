@@ -40,6 +40,18 @@ actor ICalService {
         cache?.clear()
     }
 
+    /// Removes the legacy iCal cache keys from UserDefaults. The cache lives
+    /// in the file system now (see Cache<T>); the old keys still contain
+    /// plaintext event data from previous versions.
+    /// Idempotent — guarded by a one-shot flag.
+    static func purgeLegacyUserDefaultsCache(_ defaults: UserDefaults = .standard) {
+        let flagKey = "iCalLegacyCachePurged_v1"
+        guard !defaults.bool(forKey: flagKey) else { return }
+        defaults.removeObject(forKey: "cachedICalEvents")
+        defaults.removeObject(forKey: "cachedICalEventsDate")
+        defaults.set(true, forKey: flagKey)
+    }
+
     /// Fetch events from an iCal feed URL
     func fetchEvents(from feed: ICalFeed) async throws -> [CalendarEvent] {
         guard feed.isEnabled else { return [] }
