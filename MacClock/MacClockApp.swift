@@ -97,7 +97,6 @@ struct MainClockView: View {
     @State private var newsService = NewsService()
     @State private var newsItems: [NewsItem] = []
     @State private var showWeatherDetail = false
-    @State private var dockIconRenderer = DockIconRenderer()
     @State private var windowMoveObserver: NSObjectProtocol?
     @State private var windowResizeObserver: NSObjectProtocol?
 
@@ -248,6 +247,9 @@ struct MainClockView: View {
                     }
                 }
 
+                // Dock icon lifecycle (zero-sized invisible sibling)
+                DockContainer(settings: settings)
+
         }
         }
         }
@@ -283,14 +285,8 @@ struct MainClockView: View {
             if settings.newsTickerEnabled {
                 Task { await loadNews() }
             }
-
-            // Start dynamic dock icon
-            dockIconRenderer.use24Hour = settings.use24Hour
-            dockIconRenderer.startUpdating()
         }
         .onDisappear {
-            dockIconRenderer.stopUpdating()
-
             if let token = windowMoveObserver {
                 NotificationCenter.default.removeObserver(token)
                 windowMoveObserver = nil
@@ -307,9 +303,6 @@ struct MainClockView: View {
         }
         .onChange(of: settings.newsMaxAgeDays) { _, _ in
             Task { await loadNews() }
-        }
-        .onChange(of: settings.use24Hour) { _, newValue in
-            dockIconRenderer.use24Hour = newValue
         }
         }
     }
