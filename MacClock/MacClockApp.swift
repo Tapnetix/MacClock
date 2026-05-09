@@ -129,6 +129,8 @@ struct MainClockView: View {
     @State private var iCalTimer: Timer?
     @State private var showWeatherDetail = false
     @State private var dockIconRenderer = DockIconRenderer()
+    @State private var windowMoveObserver: NSObjectProtocol?
+    @State private var windowResizeObserver: NSObjectProtocol?
 
     private var displayedBackgroundImage: NSImage? {
         switch settings.backgroundMode {
@@ -318,8 +320,9 @@ struct MainClockView: View {
                 window.setFrame(savedFrame, display: true)
             }
 
-            // Save frame on move/resize
-            NotificationCenter.default.addObserver(
+            // Save frame on move/resize. Tokens stored in @State so
+            // .onDisappear can remove the observers.
+            windowMoveObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.didMoveNotification,
                 object: window,
                 queue: .main
@@ -328,7 +331,7 @@ struct MainClockView: View {
                 settings.windowFrame = window.frame
             }
 
-            NotificationCenter.default.addObserver(
+            windowResizeObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.didResizeNotification,
                 object: window,
                 queue: .main
@@ -394,6 +397,15 @@ struct MainClockView: View {
             iCalTimer?.invalidate()
             alarmService.stopMonitoring()
             dockIconRenderer.stopUpdating()
+
+            if let token = windowMoveObserver {
+                NotificationCenter.default.removeObserver(token)
+                windowMoveObserver = nil
+            }
+            if let token = windowResizeObserver {
+                NotificationCenter.default.removeObserver(token)
+                windowResizeObserver = nil
+            }
         }
         .onChange(of: settings.backgroundMode) { _, _ in
             loadInitialBackground()
