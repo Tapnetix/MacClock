@@ -1,0 +1,86 @@
+name: MacClock
+options:
+  bundleIdPrefix: com.tapnetix
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ALWAYS_SEARCH_USER_PATHS: NO
+    CLANG_ENABLE_OBJC_ARC: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+targets:
+  MacClock:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: MacClock
+        excludes:
+          - "Info.plist"
+          - "Resources/**"
+        type: group
+        createIntermediateGroups: true
+      - path: MacClock/Resources/AppIcon.icns
+        buildPhase: resources
+      - path: MacClock/Resources/Backgrounds
+        buildPhase: resources
+        type: folder
+      - path: MacClock/Resources/Fonts
+        buildPhase: resources
+        type: folder
+    settings:
+      base:
+        PRODUCT_NAME: MacClock
+        PRODUCT_BUNDLE_IDENTIFIER: com.tapnetix.MacClock
+        INFOPLIST_FILE: MacClock/Info.plist
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        ENABLE_PREVIEWS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        COMBINE_HIDPI_IMAGES: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+  MacClockUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: MacClockUITests
+        excludes:
+          - "Info.plist"
+        type: group
+        createIntermediateGroups: true
+    dependencies:
+      - target: MacClock
+    settings:
+      base:
+        PRODUCT_NAME: MacClockUITests
+        PRODUCT_BUNDLE_IDENTIFIER: com.tapnetix.MacClockUITests
+        INFOPLIST_FILE: MacClockUITests/Info.plist
+        TEST_TARGET_NAME: MacClock
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+schemes:
+  MacClock:
+    build:
+      targets:
+        MacClock: all
+        MacClockUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MacClockUITests
+      gatherCoverageData: false
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

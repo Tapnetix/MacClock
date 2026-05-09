@@ -4,8 +4,12 @@
 Package.resolved
 
 # Xcode
+# MacClock.xcodeproj is generated from project.yml via XcodeGen — see Makefile.
+MacClock.xcodeproj/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcuserstate
 DerivedData/
 *.pbxuser
 *.mode1v3
