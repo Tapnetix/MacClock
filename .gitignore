@@ -19,6 +19,10 @@ DerivedData/
 *.swp
 *~.nib
 
+# Editors
+.vscode/
+*.code-workspace
+
 # Build artifacts
 build/
 MacClock.app/
