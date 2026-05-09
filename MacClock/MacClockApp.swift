@@ -138,6 +138,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard let path = Self.snapshotPath else { return }
+        // Wait for the scene + nature-image fetch + first weather/news pulls
+        // to settle, then snapshot the main window and exit. Used to generate
+        // README screenshots — runs entirely in-process so no Screen Recording
+        // TCC permission is required (unlike `screencapture`).
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(8))
+            Self.captureMainWindowAndExit(to: path)
+        }
+    }
+
+    private static var snapshotPath: String? {
+        CommandLine.arguments
+            .first { $0.hasPrefix("--snapshot=") }
+            .map { String($0.dropFirst("--snapshot=".count)) }
+    }
+
+    @MainActor
+    private static func captureMainWindowAndExit(to path: String) {
+        defer { NSApp.terminate(nil) }
+        // Find the main clock window — biggest visible window that isn't
+        // the Settings sheet/window.
+        let candidate = NSApp.windows
+            .filter { $0.isVisible && $0.contentView != nil && $0.title != "Settings" }
+            .max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height })
+        guard let window = candidate, let view = window.contentView else { return }
+        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let data = rep.representation(using: .png, properties: [:]) else { return }
+        try? data.write(to: URL(fileURLWithPath: path))
+    }
 }
 
 struct MainClockView: View {

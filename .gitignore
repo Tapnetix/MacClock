@@ -31,6 +31,7 @@ DerivedData/
 build/
 MacClock.app/
 Screenshot*.png
+!docs/screenshot-defaults.png
 
 # Local-only working materials
 docs/plans/
