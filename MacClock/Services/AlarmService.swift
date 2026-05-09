@@ -24,12 +24,32 @@ final class AlarmService {
     var outputDeviceUID: String = ""  // Empty = system default
     var onAlarmDismissed: ((Alarm) -> Void)?  // Called when alarm is auto-dismissed
 
+    // MARK: - Test hooks (internal)
+    // Note: avoid `_` prefix on these — `@Observable` generates `_propertyName`
+    // for every observed property, which would collide.
+    /// True when an audio player is currently allocated. Test-only.
+    @ObservationIgnored var testHasAudioPlayer: Bool { audioPlayer != nil }
+    /// True when a check timer is currently scheduled. Test-only.
+    @ObservationIgnored var testHasCheckTimer: Bool { checkTimer != nil }
+    /// True when an auto-snooze timer is currently scheduled. Test-only.
+    @ObservationIgnored var testHasAutoSnoozeTimer: Bool { autoSnoozeTimer != nil }
+    /// Current snoozeUntil value, if any. Test-only.
+    @ObservationIgnored var testSnoozeUntil: Date? { snoozeUntil }
+
     init() {
         requestNotificationPermission()
     }
 
+    /// Returns `UNUserNotificationCenter.current()` only when running in a real
+    /// app context. In `swift test` the call crashes because there's no bundle
+    /// proxy; this guard keeps unit tests safe.
+    private var notificationCenter: UNUserNotificationCenter? {
+        guard Bundle.main.bundleIdentifier != nil else { return nil }
+        return UNUserNotificationCenter.current()
+    }
+
     private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+        notificationCenter?.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
                 print("Notification permission error: \(error)")
             }
@@ -116,7 +136,7 @@ final class AlarmService {
 
         snoozeUntil = Date().addingTimeInterval(TimeInterval(alarm.snoozeDuration * 60))
         activeAlarm = nil
-        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        notificationCenter?.removeAllDeliveredNotifications()
     }
 
     private func sendNotification(for alarm: Alarm) {
@@ -131,7 +151,7 @@ final class AlarmService {
             trigger: nil
         )
 
-        UNUserNotificationCenter.current().add(request)
+        notificationCenter?.add(request)
     }
 
     private func playSound(named name: String) {
@@ -166,7 +186,7 @@ final class AlarmService {
         isAlarmFiring = false
         activeAlarm = nil
         snoozeCount = 0
-        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        notificationCenter?.removeAllDeliveredNotifications()
     }
 
     func snoozeAlarm() {
@@ -187,7 +207,7 @@ final class AlarmService {
 
         snoozeUntil = Date().addingTimeInterval(TimeInterval(alarm.snoozeDuration * 60))
         activeAlarm = nil
-        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        notificationCenter?.removeAllDeliveredNotifications()
     }
 
     static var availableSounds: [String] {
