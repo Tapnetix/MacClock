@@ -49,13 +49,20 @@ struct Alarm: Identifiable, Codable, Equatable {
             .joined(separator: ", ")
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     var timeString: String {
         let hour = time.hour ?? 0
         let minute = time.minute ?? 0
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        let date = Calendar.current.date(from: DateComponents(hour: hour, minute: minute))!
-        return formatter.string(from: date)
+        guard let date = Calendar.current.date(from: DateComponents(hour: hour, minute: minute)) else {
+            return ""
+        }
+        return Self.timeFormatter.string(from: date)
     }
 
     var nextFireDate: Date? {
