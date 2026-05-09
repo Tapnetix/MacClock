@@ -153,4 +153,42 @@ struct NewsServiceTests {
         #expect(items.count == 1)
         #expect(items[0].publishedDate != nil)
     }
+
+    // MARK: - fetchNews boundary tests
+
+    @Test("fetchNews with no feeds returns empty array")
+    func fetchNewsNoFeeds() async {
+        let service = NewsService()
+        let items = await service.fetchNews(from: [])
+        #expect(items.isEmpty)
+    }
+
+    @Test("fetchNews skips disabled feeds")
+    func fetchNewsSkipsDisabled() async {
+        let service = NewsService()
+        let feed = NewsFeed(
+            id: UUID(),
+            name: "Disabled",
+            url: "https://example.com/feed",
+            isEnabled: false,
+            isBuiltIn: false
+        )
+        let items = await service.fetchNews(from: [feed])
+        // Disabled feed produces no items and triggers no network call.
+        #expect(items.isEmpty)
+    }
+
+    @Test("fetchNews returns empty for invalid URL feed")
+    func fetchNewsInvalidURL() async {
+        let service = NewsService()
+        let feed = NewsFeed(
+            id: UUID(),
+            name: "Bad",
+            url: "ht!tp://[not a url",
+            isEnabled: true,
+            isBuiltIn: false
+        )
+        let items = await service.fetchNews(from: [feed])
+        #expect(items.isEmpty)
+    }
 }
