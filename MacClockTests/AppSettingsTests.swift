@@ -3,13 +3,19 @@ import Testing
 @testable import MacClock
 
 @Test func defaultSettings() {
-    let settings = AppSettings()
-    #expect(settings.use24Hour == false)
+    // Use an isolated suite — this test runs against `.standard` if we don't,
+    // and a developer's saved settings would make these assertions flaky.
+    let defaults = UserDefaults(suiteName: "defaultSettingsTest")!
+    defaults.removePersistentDomain(forName: "defaultSettingsTest")
+    defer { defaults.removePersistentDomain(forName: "defaultSettingsTest") }
+
+    let settings = AppSettings(defaults: defaults)
+    #expect(settings.use24Hour == true)
     #expect(settings.showSeconds == true)
-    #expect(settings.useCelsius == false)
+    #expect(settings.useCelsius == true)
     #expect(settings.windowLevel == .normal)
     #expect(settings.useAutoLocation == true)
-    #expect(settings.clockFontSize == 96.0)
+    #expect(settings.clockFontSize == 140.0)
 }
 
 @Test func settingsPersistence() {
@@ -70,12 +76,13 @@ func autoThemeDefault() {
     #expect(settings.nightThemeAuto == .warmAmber)
 }
 
-@Test("World clocks default to empty")
+@Test("World clocks default to a starter set")
 func worldClocksDefault() {
     let defaults = UserDefaults(suiteName: "test-worldclocks")!
     defaults.removePersistentDomain(forName: "test-worldclocks")
+    defer { defaults.removePersistentDomain(forName: "test-worldclocks") }
     let settings = AppSettings(defaults: defaults)
-    #expect(settings.worldClocks.isEmpty)
-    #expect(settings.worldClocksEnabled == false)
-    #expect(settings.worldClocksPosition == .bottom)
+    #expect(settings.worldClocks.map { $0.cityName } == ["New York", "London", "Tokyo"])
+    #expect(settings.worldClocksEnabled == true)
+    #expect(settings.worldClocksPosition == .side)
 }

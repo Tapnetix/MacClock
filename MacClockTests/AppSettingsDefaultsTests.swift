@@ -29,9 +29,9 @@ struct AppSettingsDefaultsTests {
 
     // MARK: - Clock display
 
-    @Test func use24HourDefaultsToFalse() {
+    @Test func use24HourDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("use24Hour"); defer { cleanup() }
-        #expect(s.use24Hour == false)
+        #expect(s.use24Hour == true)
     }
 
     @Test func showSecondsDefaultsToTrue() {
@@ -44,9 +44,9 @@ struct AppSettingsDefaultsTests {
         #expect(s.clockStyle == .digital)
     }
 
-    @Test func clockFontSizeDefaultsTo96() {
+    @Test func clockFontSizeDefaultsTo140() {
         let (s, cleanup) = Self.makeSettings("clockFontSize"); defer { cleanup() }
-        #expect(s.clockFontSize == 96.0)
+        #expect(s.clockFontSize == 140.0)
     }
 
     @Test func colorThemeDefaultsToClassicWhite() {
@@ -66,14 +66,14 @@ struct AppSettingsDefaultsTests {
         #expect(s.windowOpacity == 1.0)
     }
 
-    @Test func backgroundModeDefaultsToTimeOfDay() {
+    @Test func backgroundModeDefaultsToNature() {
         let (s, cleanup) = Self.makeSettings("backgroundMode"); defer { cleanup() }
-        #expect(s.backgroundMode == .timeOfDay)
+        #expect(s.backgroundMode == .nature)
     }
 
-    @Test func backgroundCycleIntervalDefaultsTo60() {
+    @Test func backgroundCycleIntervalDefaultsTo600() {
         let (s, cleanup) = Self.makeSettings("backgroundCycleInterval"); defer { cleanup() }
-        #expect(s.backgroundCycleInterval == 60.0)
+        #expect(s.backgroundCycleInterval == 600.0)
     }
 
     @Test func customBackgroundPathDefaultsToNil() {
@@ -120,9 +120,9 @@ struct AppSettingsDefaultsTests {
 
     // MARK: - Weather
 
-    @Test func useCelsiusDefaultsToFalse() {
+    @Test func useCelsiusDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("useCelsius"); defer { cleanup() }
-        #expect(s.useCelsius == false)
+        #expect(s.useCelsius == true)
     }
 
     @Test func weatherDetailEnabledDefaultsToTrue() {
@@ -204,19 +204,20 @@ struct AppSettingsDefaultsTests {
 
     // MARK: - World clocks
 
-    @Test func worldClocksEnabledDefaultsToFalse() {
+    @Test func worldClocksEnabledDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("worldClocksEnabled"); defer { cleanup() }
-        #expect(s.worldClocksEnabled == false)
+        #expect(s.worldClocksEnabled == true)
     }
 
-    @Test func worldClocksPositionDefaultsToBottom() {
+    @Test func worldClocksPositionDefaultsToSide() {
         let (s, cleanup) = Self.makeSettings("worldClocksPosition"); defer { cleanup() }
-        #expect(s.worldClocksPosition == .bottom)
+        #expect(s.worldClocksPosition == .side)
     }
 
-    @Test func worldClocksDefaultsToEmpty() {
+    @Test func worldClocksDefaultsToStarterSet() {
         let (s, cleanup) = Self.makeSettings("worldClocks"); defer { cleanup() }
-        #expect(s.worldClocks.isEmpty)
+        let names = s.worldClocks.map { $0.cityName }
+        #expect(names == ["New York", "London", "Tokyo"])
     }
 
     @Test func showTimezoneAbbreviationDefaultsToTrue() {
@@ -231,9 +232,9 @@ struct AppSettingsDefaultsTests {
 
     // MARK: - News ticker
 
-    @Test func newsTickerEnabledDefaultsToFalse() {
+    @Test func newsTickerEnabledDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("newsTickerEnabled"); defer { cleanup() }
-        #expect(s.newsTickerEnabled == false)
+        #expect(s.newsTickerEnabled == true)
     }
 
     @Test func newsTickerStyleDefaultsToScrolling() {
@@ -269,9 +270,9 @@ struct AppSettingsDefaultsTests {
 
     // MARK: - Calendar
 
-    @Test func calendarEnabledDefaultsToFalse() {
+    @Test func calendarEnabledDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("calendarEnabled"); defer { cleanup() }
-        #expect(s.calendarEnabled == false)
+        #expect(s.calendarEnabled == true)
     }
 
     @Test func calendarShowCountdownDefaultsToTrue() {
@@ -279,9 +280,9 @@ struct AppSettingsDefaultsTests {
         #expect(s.calendarShowCountdown == true)
     }
 
-    @Test func calendarShowAgendaDefaultsToFalse() {
+    @Test func calendarShowAgendaDefaultsToTrue() {
         let (s, cleanup) = Self.makeSettings("calendarShowAgenda"); defer { cleanup() }
-        #expect(s.calendarShowAgenda == false)
+        #expect(s.calendarShowAgenda == true)
     }
 
     @Test func calendarAgendaPositionDefaultsToSide() {

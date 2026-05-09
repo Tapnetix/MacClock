@@ -52,7 +52,7 @@ final class AppSettings: UserDefaultsBacked {
     // MARK: - Clock display
 
     @ObservationIgnored @UserDefault(key: "use24Hour")
-    var use24Hour: Bool = false
+    var use24Hour: Bool = true
 
     @ObservationIgnored @UserDefault(key: "showSeconds")
     var showSeconds: Bool = true
@@ -61,7 +61,7 @@ final class AppSettings: UserDefaultsBacked {
     var clockStyle: ClockStyle = .digital
 
     @ObservationIgnored @UserDefault(key: "clockFontSize")
-    var clockFontSize: Double = 96.0
+    var clockFontSize: Double = 140.0
 
     @ObservationIgnored @UserDefaultRaw(key: "colorTheme")
     var colorTheme: ColorTheme = .classicWhite
@@ -75,10 +75,10 @@ final class AppSettings: UserDefaultsBacked {
     var windowOpacity: Double = 1.0
 
     @ObservationIgnored @UserDefaultRaw(key: "backgroundMode")
-    var backgroundMode: BackgroundMode = .timeOfDay
+    var backgroundMode: BackgroundMode = .nature
 
     @ObservationIgnored @UserDefault(key: "backgroundCycleInterval")
-    var backgroundCycleInterval: Double = 60.0
+    var backgroundCycleInterval: Double = 600.0
 
     @ObservationIgnored @UserDefaultOptional(key: "customBackgroundPath")
     var customBackgroundPath: String? = nil
@@ -106,7 +106,7 @@ final class AppSettings: UserDefaultsBacked {
     // MARK: - Weather
 
     @ObservationIgnored @UserDefault(key: "useCelsius")
-    var useCelsius: Bool = false
+    var useCelsius: Bool = true
 
     @ObservationIgnored @UserDefault(key: "weatherDetailEnabled")
     var weatherDetailEnabled: Bool = true
@@ -158,13 +158,13 @@ final class AppSettings: UserDefaultsBacked {
     // MARK: - World clocks
 
     @ObservationIgnored @UserDefault(key: "worldClocksEnabled")
-    var worldClocksEnabled: Bool = false
+    var worldClocksEnabled: Bool = true
 
     @ObservationIgnored @UserDefaultRaw(key: "worldClocksPosition")
-    var worldClocksPosition: WorldClocksPosition = .bottom
+    var worldClocksPosition: WorldClocksPosition = .side
 
     @ObservationIgnored @UserDefaultCodable(key: "worldClocks")
-    var worldClocks: [WorldClock] = []
+    var worldClocks: [WorldClock] = AppSettings.starterWorldClocks
 
     @ObservationIgnored @UserDefault(key: "showTimezoneAbbreviation")
     var showTimezoneAbbreviation: Bool = true
@@ -175,7 +175,7 @@ final class AppSettings: UserDefaultsBacked {
     // MARK: - News ticker
 
     @ObservationIgnored @UserDefault(key: "newsTickerEnabled")
-    var newsTickerEnabled: Bool = false
+    var newsTickerEnabled: Bool = true
 
     @ObservationIgnored @UserDefaultRaw(key: "newsTickerStyle")
     var newsTickerStyle: NewsTickerStyle = .scrolling
@@ -198,13 +198,13 @@ final class AppSettings: UserDefaultsBacked {
     // MARK: - Calendar and alarms
 
     @ObservationIgnored @UserDefault(key: "calendarEnabled")
-    var calendarEnabled: Bool = false
+    var calendarEnabled: Bool = true
 
     @ObservationIgnored @UserDefault(key: "calendarShowCountdown")
     var calendarShowCountdown: Bool = true
 
     @ObservationIgnored @UserDefault(key: "calendarShowAgenda")
-    var calendarShowAgenda: Bool = false
+    var calendarShowAgenda: Bool = true
 
     @ObservationIgnored @UserDefaultRaw(key: "calendarAgendaPosition")
     var calendarAgendaPosition: WorldClocksPosition = .side
@@ -247,6 +247,17 @@ final class AppSettings: UserDefaultsBacked {
     }
 
     // MARK: - Init
+
+    /// Starter set of world clocks shipped on first launch — three globally
+    /// spread cities so the side panel renders something interesting before
+    /// the user customises it. UUIDs are generated once per process; stored
+    /// to UserDefaults on first observation, so subsequent launches read
+    /// the persisted IDs (additions/removals are stable across sessions).
+    static let starterWorldClocks: [WorldClock] = [
+        WorldClock(id: UUID(), cityName: "New York", timezoneIdentifier: "America/New_York"),
+        WorldClock(id: UUID(), cityName: "London", timezoneIdentifier: "Europe/London"),
+        WorldClock(id: UUID(), cityName: "Tokyo", timezoneIdentifier: "Asia/Tokyo"),
+    ]
 
     init(defaults: UserDefaults = .standard) {
         self.userDefaultsStore = defaults

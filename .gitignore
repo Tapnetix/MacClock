@@ -35,5 +35,6 @@ Screenshot*.png
 # Local-only working materials
 docs/plans/
 docs/superpowers/
+docs/reviews/
 icon-mockups/
 diagnose_ical.swift
