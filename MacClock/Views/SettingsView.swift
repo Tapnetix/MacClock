@@ -1461,29 +1461,6 @@ struct ManualFeedSheet: View {
     }
 }
 
-// MARK: - Settings Section
-
-struct SettingsSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-
-            VStack(alignment: .leading, spacing: 10) {
-                content
-            }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
-        }
-    }
-}
-
 // MARK: - City Picker Sheet
 
 struct CityPickerSheet: View {
