@@ -1,6 +1,6 @@
 name: Release
 
-"on":
+on:
   push:
     tags:
       - 'v*'
@@ -13,10 +13,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout (no external action — org policy is local_only)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          curl -sL "https://github.com/${REPO}/archive/${SHA}.tar.gz" -o /tmp/src.tgz
+          tar -xzf /tmp/src.tgz -C "$GITHUB_WORKSPACE" --strip-components=1
 
       - name: Show toolchain
         run: |

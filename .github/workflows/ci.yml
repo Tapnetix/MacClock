@@ -1,6 +1,6 @@
 name: CI
 
-"on":
+on:
   push:
     branches: [main]
   pull_request:
@@ -12,8 +12,13 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout (no external action — org policy is local_only)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          curl -sL "https://github.com/${REPO}/archive/${SHA}.tar.gz" -o /tmp/src.tgz
+          tar -xzf /tmp/src.tgz -C "$GITHUB_WORKSPACE" --strip-components=1
 
       - name: Show toolchain
         run: |
