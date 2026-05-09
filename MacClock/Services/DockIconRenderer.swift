@@ -15,8 +15,12 @@ final class DockIconRenderer {
     func startUpdating() {
         updateIcon()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            // Bind to a local `let` so the Task closure captures a Sendable
+            // value rather than the mutable `self?` from [weak self]
+            // (Swift 5.10 strict-concurrency requirement).
+            guard let strongSelf = self else { return }
             Task { @MainActor in
-                self?.checkAndUpdate()
+                strongSelf.checkAndUpdate()
             }
         }
     }

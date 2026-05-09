@@ -63,23 +63,25 @@ struct CalendarContainer<Content: View>: View {
         guard !settings.iCalFeeds.isEmpty else { return }
 
         Task {
-            var fetchedEvents: [CalendarEvent] = []
             let today = Calendar.current.startOfDay(for: Date())
             guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) else { return }
 
+            var collected: [CalendarEvent] = []
             for feed in settings.iCalFeeds where feed.isEnabled {
                 do {
                     let events = try await iCalService.fetchEvents(from: feed)
                     // Filter to today's events that haven't ended yet
                     let now = Date()
                     let todayEventsFetched = events.filter { $0.startDate >= today && $0.startDate < tomorrow && $0.endDate > now }
-                    fetchedEvents.append(contentsOf: todayEventsFetched)
+                    collected.append(contentsOf: todayEventsFetched)
                 } catch {
                     print("Failed to fetch iCal feed \(feed.name): \(error)")
                 }
             }
+            // Bind to an immutable `let` before crossing actor boundaries —
+            // a `var` capture trips Swift 5.10 strict-concurrency.
+            let fetchedEvents = collected
 
-            // Cache the fetched events
             iCalService.cacheEvents(fetchedEvents)
 
             await MainActor.run {
