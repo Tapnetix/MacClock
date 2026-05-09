@@ -258,6 +258,47 @@ struct ICalServiceTests {
         #expect(events.isEmpty)
     }
 
+    @Test("fetchEvents throws invalidURL for nonsense URL string")
+    func fetchEventsInvalidURL() async {
+        let service = ICalService()
+        let feed = ICalFeed(
+            id: UUID(),
+            name: "Bad",
+            url: "ht!tp://[not a url",
+            isEnabled: true,
+            colorHex: "#FF0000"
+        )
+        do {
+            _ = try await service.fetchEvents(from: feed)
+            Issue.record("Expected throw")
+        } catch ICalError.invalidURL {
+            // expected
+        } catch {
+            Issue.record("Wrong error: \(error)")
+        }
+    }
+
+    @Test("fetchEvents returns empty for disabled feed")
+    func fetchEventsDisabledFeed() async throws {
+        let service = ICalService()
+        let feed = ICalFeed(
+            id: UUID(),
+            name: "Off",
+            url: "https://example.com/cal.ics",
+            isEnabled: false,
+            colorHex: "#FF0000"
+        )
+        let events = try await service.fetchEvents(from: feed)
+        #expect(events.isEmpty)
+    }
+
+    @Test("ICalError descriptions are non-empty")
+    func iCalErrorDescriptions() {
+        #expect(ICalError.invalidURL.errorDescription?.isEmpty == false)
+        #expect(ICalError.invalidContent.errorDescription?.isEmpty == false)
+        #expect(ICalError.networkError.errorDescription?.isEmpty == false)
+    }
+
     @Test("Legacy UserDefaults keys are purged once")
     func legacyKeysPurged() {
         let suite = UserDefaults(suiteName: "test-legacy-purge-\(UUID().uuidString)")!
