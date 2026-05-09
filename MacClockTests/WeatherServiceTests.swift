@@ -59,3 +59,51 @@ import Foundation
     #expect(url != nil)
     #expect(url!.absoluteString.contains("latitude=nan"))
 }
+
+// MARK: - JSON decoder boundary tests
+
+@Test func decodeOpenMeteoResponseSuccess() throws {
+    let json = """
+    {
+      "current": {
+        "temperature_2m": 18.5,
+        "weather_code": 0,
+        "apparent_temperature": 17.2,
+        "relative_humidity_2m": 65
+      },
+      "daily": {
+        "sunrise": ["2026-05-09T06:30"],
+        "sunset": ["2026-05-09T19:45"],
+        "temperature_2m_max": [22.0],
+        "temperature_2m_min": [12.0],
+        "weather_code": [1]
+      },
+      "hourly": {
+        "time": ["2026-05-09T08:00"],
+        "temperature_2m": [16.0],
+        "weather_code": [0]
+      }
+    }
+    """.data(using: .utf8)!
+
+    let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: json)
+    #expect(response.current.temperature == 18.5)
+    #expect(response.current.humidity == 65)
+    #expect(response.daily.maxTemps == [22.0])
+}
+
+@Test func decodeOpenMeteoResponseRejectsMalformedJSON() {
+    let bad = "{ not json".data(using: .utf8)!
+    #expect(throws: (any Error).self) {
+        _ = try JSONDecoder().decode(OpenMeteoResponse.self, from: bad)
+    }
+}
+
+@Test func decodeOpenMeteoResponseRejectsMissingFields() {
+    let incomplete = """
+    { "current": { "temperature_2m": 1.0 } }
+    """.data(using: .utf8)!
+    #expect(throws: (any Error).self) {
+        _ = try JSONDecoder().decode(OpenMeteoResponse.self, from: incomplete)
+    }
+}
