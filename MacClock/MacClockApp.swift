@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreText
 import AppKit
+import OSLog
 
 @main
 struct MacClockApp: App {
@@ -15,8 +16,22 @@ struct MacClockApp: App {
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        runMigrations()
         ICalService.purgeLegacyUserDefaultsCache()
         registerFonts()
+    }
+
+    private func runMigrations() {
+        do {
+            try MigrationRunner.run()
+        } catch {
+            // A migration failure shouldn't refuse to launch — log and proceed
+            // with whatever state UserDefaults is in. AppSettings has fallbacks
+            // for all decode failures, so the user gets a (possibly empty)
+            // working UI rather than a silent no-launch.
+            let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "MacClock", category: "Migration")
+            logger.error("Schema migration failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     var body: some Scene {
