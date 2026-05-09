@@ -120,4 +120,36 @@ struct FeedDiscoveryTests {
         let feeds = service.parseRSSLinks(from: "", baseURL: URL(string: "https://example.com")!)
         #expect(feeds.isEmpty)
     }
+
+    @Test("Recognized feed types: RSS and Atom, but not RDF")
+    func feedTypeRecognition() {
+        let html = """
+        <link rel="alternate" type="application/rdf+xml" title="RDF" href="/rdf.xml">
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        // RDF is not currently recognized.
+        #expect(feeds.isEmpty)
+    }
+
+    @Test("isURL trims whitespace before deciding")
+    func isURLTrimsWhitespace() {
+        let service = FeedDiscoveryService()
+        #expect(service.isURL("  https://example.com  ") == true)
+        #expect(service.isURL("  hello world  ") == false)
+    }
+
+    @Test("isURL rejects spaces")
+    func isURLRejectsSpaces() {
+        let service = FeedDiscoveryService()
+        // Even with a dot, embedded spaces disqualify.
+        #expect(service.isURL("example .com") == false)
+    }
+
+    @Test("FeedDiscoveryError descriptions are non-empty")
+    func feedDiscoveryErrorDescriptions() {
+        #expect(FeedDiscoveryError.invalidURL.errorDescription?.isEmpty == false)
+        #expect(FeedDiscoveryError.invalidResponse.errorDescription?.isEmpty == false)
+        #expect(FeedDiscoveryError.noFeedsFound.errorDescription?.isEmpty == false)
+    }
 }
