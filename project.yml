@@ -65,6 +65,10 @@ targets:
         INFOPLIST_FILE: MacClockUITests/Info.plist
         TEST_TARGET_NAME: MacClock
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+        # XCTest dynamically loads the .xctest bundle into the test runner.
+        # Hardened runtime forbids that under ad-hoc signing (bundle and
+        # runner end up with different Team IDs since neither has one).
+        ENABLE_HARDENED_RUNTIME: NO
 schemes:
   MacClock:
     build:

@@ -5,7 +5,7 @@ import OSLog
 
 @main
 struct MacClockApp: App {
-    @State private var settings = AppSettings()
+    @State private var settings = AppSettings(defaults: MacClockApp.makeUserDefaults())
     @State private var locationService = LocationService()
     @State private var backgroundManager = BackgroundManager()
     @State private var showSettings = false
@@ -19,6 +19,22 @@ struct MacClockApp: App {
         runMigrations()
         ICalService.purgeLegacyUserDefaultsCache()
         registerFonts()
+    }
+
+    /// Returns a `UserDefaults` instance for `AppSettings` to back its
+    /// state. In normal use this is `.standard`. When the app is launched
+    /// with `--test-mode` (used by `MacClockUITests` to keep XCUITest
+    /// runs from clobbering a developer's saved settings), a transient
+    /// suite-backed defaults is returned and pre-cleared so each test
+    /// run starts from a known empty state.
+    private static func makeUserDefaults() -> UserDefaults {
+        guard CommandLine.arguments.contains("--test-mode") else {
+            return .standard
+        }
+        let suiteName = "com.tapnetix.MacClock.UITests"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
     }
 
     private func runMigrations() {
