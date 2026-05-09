@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import OSLog
+import Observation
 
 enum WindowLevel: String, CaseIterable {
     case normal = "Normal"
@@ -38,323 +39,217 @@ enum NewsTickerStyle: String, CaseIterable {
 }
 
 @Observable
-final class AppSettings {
-    private let defaults: UserDefaults
+final class AppSettings: UserDefaultsBacked {
+    // MARK: - UserDefaultsBacked conformance
+
+    let userDefaultsStore: UserDefaults
+
+    @ObservationIgnored
+    var observationRegistrar: ObservationRegistrar { _$observationRegistrar }
+
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "MacClock", category: "AppSettings")
 
-    var use24Hour: Bool {
-        didSet { defaults.set(use24Hour, forKey: "use24Hour") }
-    }
+    // MARK: - Clock display
 
-    var showSeconds: Bool {
-        didSet { defaults.set(showSeconds, forKey: "showSeconds") }
-    }
+    @ObservationIgnored @UserDefault(key: "use24Hour")
+    var use24Hour: Bool = false
 
-    var useCelsius: Bool {
-        didSet { defaults.set(useCelsius, forKey: "useCelsius") }
-    }
+    @ObservationIgnored @UserDefault(key: "showSeconds")
+    var showSeconds: Bool = true
 
-    var weatherDetailEnabled: Bool {
-        didSet { defaults.set(weatherDetailEnabled, forKey: "weatherDetailEnabled") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "clockStyle")
+    var clockStyle: ClockStyle = .digital
 
-    var weatherShowCurrentDetails: Bool {
-        didSet { defaults.set(weatherShowCurrentDetails, forKey: "weatherShowCurrentDetails") }
-    }
+    @ObservationIgnored @UserDefault(key: "clockFontSize")
+    var clockFontSize: Double = 96.0
 
-    var weatherShowSunriseSunset: Bool {
-        didSet { defaults.set(weatherShowSunriseSunset, forKey: "weatherShowSunriseSunset") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "colorTheme")
+    var colorTheme: ColorTheme = .classicWhite
 
-    var weatherShowHourly: Bool {
-        didSet { defaults.set(weatherShowHourly, forKey: "weatherShowHourly") }
-    }
+    // MARK: - Window
 
-    var weatherShowDaily: Bool {
-        didSet { defaults.set(weatherShowDaily, forKey: "weatherShowDaily") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "windowLevel")
+    var windowLevel: WindowLevel = .normal
 
-    var windowLevel: WindowLevel {
-        didSet { defaults.set(windowLevel.rawValue, forKey: "windowLevel") }
-    }
+    @ObservationIgnored @UserDefault(key: "windowOpacity")
+    var windowOpacity: Double = 1.0
 
-    var useAutoLocation: Bool {
-        didSet { defaults.set(useAutoLocation, forKey: "useAutoLocation") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "backgroundMode")
+    var backgroundMode: BackgroundMode = .timeOfDay
 
-    var manualLocationName: String {
-        didSet { defaults.set(manualLocationName, forKey: "manualLocationName") }
-    }
+    @ObservationIgnored @UserDefault(key: "backgroundCycleInterval")
+    var backgroundCycleInterval: Double = 60.0
 
-    var manualLatitude: Double {
-        didSet { defaults.set(manualLatitude, forKey: "manualLatitude") }
-    }
+    @ObservationIgnored @UserDefaultOptional(key: "customBackgroundPath")
+    var customBackgroundPath: String? = nil
 
-    var manualLongitude: Double {
-        didSet { defaults.set(manualLongitude, forKey: "manualLongitude") }
-    }
+    @ObservationIgnored @UserDefaultOptional(key: "customBackgroundBookmark")
+    var customBackgroundBookmark: Data? = nil
 
-    var customBackgroundPath: String? {
-        didSet { defaults.set(customBackgroundPath, forKey: "customBackgroundPath") }
-    }
+    @ObservationIgnored @UserDefault(key: "launchAtLogin")
+    var launchAtLogin: Bool = false
 
-    var customBackgroundBookmark: Data? {
-        didSet {
-            if let data = customBackgroundBookmark {
-                defaults.set(data, forKey: "customBackgroundBookmark")
-            } else {
-                defaults.removeObject(forKey: "customBackgroundBookmark")
-            }
-        }
-    }
+    // MARK: - Location
 
-    var launchAtLogin: Bool {
-        didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
-    }
+    @ObservationIgnored @UserDefault(key: "useAutoLocation")
+    var useAutoLocation: Bool = true
 
-    var clockFontSize: Double {
-        didSet { defaults.set(clockFontSize, forKey: "clockFontSize") }
-    }
+    @ObservationIgnored @UserDefault(key: "manualLocationName")
+    var manualLocationName: String = ""
 
-    var backgroundMode: BackgroundMode {
-        didSet { defaults.set(backgroundMode.rawValue, forKey: "backgroundMode") }
-    }
+    @ObservationIgnored @UserDefault(key: "manualLatitude")
+    var manualLatitude: Double = 0.0
 
-    var backgroundCycleInterval: Double {
-        didSet { defaults.set(backgroundCycleInterval, forKey: "backgroundCycleInterval") }
-    }
+    @ObservationIgnored @UserDefault(key: "manualLongitude")
+    var manualLongitude: Double = 0.0
 
-    var windowOpacity: Double {
-        didSet { defaults.set(windowOpacity, forKey: "windowOpacity") }
-    }
+    // MARK: - Weather
 
-    var colorTheme: ColorTheme {
-        didSet { defaults.set(colorTheme.rawValue, forKey: "colorTheme") }
-    }
+    @ObservationIgnored @UserDefault(key: "useCelsius")
+    var useCelsius: Bool = false
 
-    var autoDimEnabled: Bool {
-        didSet { defaults.set(autoDimEnabled, forKey: "autoDimEnabled") }
-    }
+    @ObservationIgnored @UserDefault(key: "weatherDetailEnabled")
+    var weatherDetailEnabled: Bool = true
 
-    var autoDimLevel: Double {
-        didSet { defaults.set(autoDimLevel, forKey: "autoDimLevel") }
-    }
+    @ObservationIgnored @UserDefault(key: "weatherShowCurrentDetails")
+    var weatherShowCurrentDetails: Bool = true
 
-    var autoDimMode: AutoDimMode {
-        didSet { defaults.set(autoDimMode.rawValue, forKey: "autoDimMode") }
-    }
+    @ObservationIgnored @UserDefault(key: "weatherShowSunriseSunset")
+    var weatherShowSunriseSunset: Bool = true
 
-    var dimStartHour: Int {
-        didSet { defaults.set(dimStartHour, forKey: "dimStartHour") }
-    }
+    @ObservationIgnored @UserDefault(key: "weatherShowHourly")
+    var weatherShowHourly: Bool = true
 
-    var dimEndHour: Int {
-        didSet { defaults.set(dimEndHour, forKey: "dimEndHour") }
-    }
+    @ObservationIgnored @UserDefault(key: "weatherShowDaily")
+    var weatherShowDaily: Bool = true
 
-    var nightTheme: ColorTheme? {
-        didSet {
-            if let theme = nightTheme {
-                defaults.set(theme.rawValue, forKey: "nightTheme")
-            } else {
-                defaults.removeObject(forKey: "nightTheme")
-            }
-        }
-    }
+    // MARK: - Auto-dim and theme
 
-    var clockStyle: ClockStyle {
-        didSet { defaults.set(clockStyle.rawValue, forKey: "clockStyle") }
-    }
+    @ObservationIgnored @UserDefault(key: "autoDimEnabled")
+    var autoDimEnabled: Bool = false
 
-    var autoThemeEnabled: Bool {
-        didSet { defaults.set(autoThemeEnabled, forKey: "autoThemeEnabled") }
-    }
+    @ObservationIgnored @UserDefault(key: "autoDimLevel")
+    var autoDimLevel: Double = 0.5
 
-    var dayTheme: ColorTheme {
-        didSet { defaults.set(dayTheme.rawValue, forKey: "dayTheme") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "autoDimMode")
+    var autoDimMode: AutoDimMode = .sunriseSunset
 
-    var nightThemeAuto: ColorTheme {
-        didSet { defaults.set(nightThemeAuto.rawValue, forKey: "nightThemeAuto") }
-    }
+    @ObservationIgnored @UserDefault(key: "dimStartHour")
+    var dimStartHour: Int = 22
 
-    var autoThemeMode: AutoDimMode {
-        didSet { defaults.set(autoThemeMode.rawValue, forKey: "autoThemeMode") }
-    }
+    @ObservationIgnored @UserDefault(key: "dimEndHour")
+    var dimEndHour: Int = 7
 
-    var worldClocksEnabled: Bool {
-        didSet { defaults.set(worldClocksEnabled, forKey: "worldClocksEnabled") }
-    }
+    @ObservationIgnored @UserDefaultRawOptional(key: "nightTheme")
+    var nightTheme: ColorTheme? = nil
 
-    var worldClocksPosition: WorldClocksPosition {
-        didSet { defaults.set(worldClocksPosition.rawValue, forKey: "worldClocksPosition") }
-    }
+    @ObservationIgnored @UserDefault(key: "autoThemeEnabled")
+    var autoThemeEnabled: Bool = false
 
-    var worldClocks: [WorldClock] {
-        didSet {
-            if let data = try? JSONEncoder().encode(worldClocks) {
-                defaults.set(data, forKey: "worldClocks")
-            }
-        }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "dayTheme")
+    var dayTheme: ColorTheme = .classicWhite
 
-    var showTimezoneAbbreviation: Bool {
-        didSet { defaults.set(showTimezoneAbbreviation, forKey: "showTimezoneAbbreviation") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "nightThemeAuto")
+    var nightThemeAuto: ColorTheme = .warmAmber
 
-    var showDayDifference: Bool {
-        didSet { defaults.set(showDayDifference, forKey: "showDayDifference") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "autoThemeMode")
+    var autoThemeMode: AutoDimMode = .sunriseSunset
 
-    var newsTickerEnabled: Bool {
-        didSet { defaults.set(newsTickerEnabled, forKey: "newsTickerEnabled") }
-    }
+    // MARK: - World clocks
 
-    var newsTickerStyle: NewsTickerStyle {
-        didSet { defaults.set(newsTickerStyle.rawValue, forKey: "newsTickerStyle") }
-    }
+    @ObservationIgnored @UserDefault(key: "worldClocksEnabled")
+    var worldClocksEnabled: Bool = false
 
-    var newsFeeds: [NewsFeed] {
-        didSet {
-            if let data = try? JSONEncoder().encode(newsFeeds) {
-                defaults.set(data, forKey: "newsFeeds")
-            }
-        }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "worldClocksPosition")
+    var worldClocksPosition: WorldClocksPosition = .bottom
 
-    var newsRefreshInterval: Double {
-        didSet { defaults.set(newsRefreshInterval, forKey: "newsRefreshInterval") }
-    }
+    @ObservationIgnored @UserDefaultCodable(key: "worldClocks")
+    var worldClocks: [WorldClock] = []
 
-    var newsScrollSpeed: Double {
-        didSet { defaults.set(newsScrollSpeed, forKey: "newsScrollSpeed") }
-    }
+    @ObservationIgnored @UserDefault(key: "showTimezoneAbbreviation")
+    var showTimezoneAbbreviation: Bool = true
 
-    var newsRotateInterval: Double {
-        didSet { defaults.set(newsRotateInterval, forKey: "newsRotateInterval") }
-    }
+    @ObservationIgnored @UserDefault(key: "showDayDifference")
+    var showDayDifference: Bool = true
 
-    var newsMaxAgeDays: Int {
-        didSet { defaults.set(newsMaxAgeDays, forKey: "newsMaxAgeDays") }
-    }
+    // MARK: - News ticker
 
-    var calendarEnabled: Bool {
-        didSet { defaults.set(calendarEnabled, forKey: "calendarEnabled") }
-    }
+    @ObservationIgnored @UserDefault(key: "newsTickerEnabled")
+    var newsTickerEnabled: Bool = false
 
-    var calendarShowCountdown: Bool {
-        didSet { defaults.set(calendarShowCountdown, forKey: "calendarShowCountdown") }
-    }
+    @ObservationIgnored @UserDefaultRaw(key: "newsTickerStyle")
+    var newsTickerStyle: NewsTickerStyle = .scrolling
 
-    var calendarShowAgenda: Bool {
-        didSet { defaults.set(calendarShowAgenda, forKey: "calendarShowAgenda") }
-    }
+    @ObservationIgnored @UserDefaultCodable(key: "newsFeeds")
+    var newsFeeds: [NewsFeed] = NewsFeed.builtInFeeds
 
-    var calendarAgendaPosition: WorldClocksPosition {
-        didSet { defaults.set(calendarAgendaPosition.rawValue, forKey: "calendarAgendaPosition") }
-    }
+    @ObservationIgnored @UserDefault(key: "newsRefreshInterval")
+    var newsRefreshInterval: Double = 15.0
 
-    var selectedCalendarIDs: [String] {
-        didSet { defaults.set(selectedCalendarIDs, forKey: "selectedCalendarIDs") }
-    }
+    @ObservationIgnored @UserDefault(key: "newsScrollSpeed")
+    var newsScrollSpeed: Double = 50.0
 
-    var iCalFeeds: [ICalFeed] {
-        didSet {
-            if let data = try? JSONEncoder().encode(iCalFeeds) {
-                defaults.set(data, forKey: "iCalFeeds")
-            }
-        }
-    }
+    @ObservationIgnored @UserDefault(key: "newsRotateInterval")
+    var newsRotateInterval: Double = 10.0
 
-    var alarms: [Alarm] {
-        didSet {
-            if let data = try? JSONEncoder().encode(alarms) {
-                defaults.set(data, forKey: "alarms")
-            }
-        }
-    }
+    @ObservationIgnored @UserDefault(key: "newsMaxAgeDays")
+    var newsMaxAgeDays: Int = 3
 
-    var alarmOutputDeviceUID: String {
-        didSet { defaults.set(alarmOutputDeviceUID, forKey: "alarmOutputDeviceUID") }
-    }
+    // MARK: - Calendar and alarms
 
+    @ObservationIgnored @UserDefault(key: "calendarEnabled")
+    var calendarEnabled: Bool = false
+
+    @ObservationIgnored @UserDefault(key: "calendarShowCountdown")
+    var calendarShowCountdown: Bool = true
+
+    @ObservationIgnored @UserDefault(key: "calendarShowAgenda")
+    var calendarShowAgenda: Bool = false
+
+    @ObservationIgnored @UserDefaultRaw(key: "calendarAgendaPosition")
+    var calendarAgendaPosition: WorldClocksPosition = .side
+
+    @ObservationIgnored @UserDefault(key: "selectedCalendarIDs")
+    var selectedCalendarIDs: [String] = []
+
+    @ObservationIgnored @UserDefaultCodable(key: "iCalFeeds")
+    var iCalFeeds: [ICalFeed] = []
+
+    @ObservationIgnored @UserDefaultCodable(key: "alarms")
+    var alarms: [Alarm] = []
+
+    @ObservationIgnored @UserDefault(key: "alarmOutputDeviceUID")
+    var alarmOutputDeviceUID: String = ""
+
+    // MARK: - Window frame (4-scalar; not migrated to @UserDefault)
+
+    /// Stored as four scalar keys (windowX, windowY, windowWidth, windowHeight)
+    /// for historical reasons. Not migrated to @UserDefault because the wrapper
+    /// assumes one key per property; migrating would require a schema migration
+    /// (out of scope — see plans/2026-05-09-appsettings-userdefault-wrapper.md).
     var windowFrame: NSRect {
         get {
-            let x = defaults.double(forKey: "windowX")
-            let y = defaults.double(forKey: "windowY")
-            let w = defaults.double(forKey: "windowWidth")
-            let h = defaults.double(forKey: "windowHeight")
+            let x = userDefaultsStore.double(forKey: "windowX")
+            let y = userDefaultsStore.double(forKey: "windowY")
+            let w = userDefaultsStore.double(forKey: "windowWidth")
+            let h = userDefaultsStore.double(forKey: "windowHeight")
             if w > 0 && h > 0 {
                 return NSRect(x: x, y: y, width: w, height: h)
             }
             return .zero
         }
         set {
-            defaults.set(newValue.origin.x, forKey: "windowX")
-            defaults.set(newValue.origin.y, forKey: "windowY")
-            defaults.set(newValue.width, forKey: "windowWidth")
-            defaults.set(newValue.height, forKey: "windowHeight")
+            userDefaultsStore.set(newValue.origin.x, forKey: "windowX")
+            userDefaultsStore.set(newValue.origin.y, forKey: "windowY")
+            userDefaultsStore.set(newValue.width, forKey: "windowWidth")
+            userDefaultsStore.set(newValue.height, forKey: "windowHeight")
         }
     }
 
+    // MARK: - Init
+
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        self.use24Hour = defaults.bool(forKey: "use24Hour")
-        self.showSeconds = defaults.object(forKey: "showSeconds") as? Bool ?? true
-        self.useCelsius = defaults.bool(forKey: "useCelsius")
-        self.weatherDetailEnabled = defaults.object(forKey: "weatherDetailEnabled") as? Bool ?? true
-        self.weatherShowCurrentDetails = defaults.object(forKey: "weatherShowCurrentDetails") as? Bool ?? true
-        self.weatherShowSunriseSunset = defaults.object(forKey: "weatherShowSunriseSunset") as? Bool ?? true
-        self.weatherShowHourly = defaults.object(forKey: "weatherShowHourly") as? Bool ?? true
-        self.weatherShowDaily = defaults.object(forKey: "weatherShowDaily") as? Bool ?? true
-        self.windowLevel = WindowLevel(rawValue: defaults.string(forKey: "windowLevel") ?? "") ?? .normal
-        self.useAutoLocation = defaults.object(forKey: "useAutoLocation") as? Bool ?? true
-        self.manualLocationName = defaults.string(forKey: "manualLocationName") ?? ""
-        self.manualLatitude = defaults.double(forKey: "manualLatitude")
-        self.manualLongitude = defaults.double(forKey: "manualLongitude")
-        self.customBackgroundPath = defaults.string(forKey: "customBackgroundPath")
-        self.customBackgroundBookmark = defaults.data(forKey: "customBackgroundBookmark")
-        self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
-        self.clockFontSize = defaults.object(forKey: "clockFontSize") as? Double ?? 96.0
-        self.backgroundMode = BackgroundMode(rawValue: defaults.string(forKey: "backgroundMode") ?? "") ?? .timeOfDay
-        self.backgroundCycleInterval = defaults.object(forKey: "backgroundCycleInterval") as? Double ?? 60.0
-        self.windowOpacity = defaults.object(forKey: "windowOpacity") as? Double ?? 1.0
-        self.colorTheme = ColorTheme(rawValue: defaults.string(forKey: "colorTheme") ?? "") ?? .classicWhite
-        self.autoDimEnabled = defaults.bool(forKey: "autoDimEnabled")
-        self.autoDimLevel = defaults.object(forKey: "autoDimLevel") as? Double ?? 0.5
-        self.autoDimMode = AutoDimMode(rawValue: defaults.string(forKey: "autoDimMode") ?? "") ?? .sunriseSunset
-        self.dimStartHour = defaults.object(forKey: "dimStartHour") as? Int ?? 22
-        self.dimEndHour = defaults.object(forKey: "dimEndHour") as? Int ?? 7
-        if let nightThemeRaw = defaults.string(forKey: "nightTheme") {
-            self.nightTheme = ColorTheme(rawValue: nightThemeRaw)
-        } else {
-            self.nightTheme = nil
-        }
-        self.clockStyle = ClockStyle(rawValue: defaults.string(forKey: "clockStyle") ?? "") ?? .digital
-        self.autoThemeEnabled = defaults.bool(forKey: "autoThemeEnabled")
-        self.dayTheme = ColorTheme(rawValue: defaults.string(forKey: "dayTheme") ?? "") ?? .classicWhite
-        self.nightThemeAuto = ColorTheme(rawValue: defaults.string(forKey: "nightThemeAuto") ?? "") ?? .warmAmber
-        self.autoThemeMode = AutoDimMode(rawValue: defaults.string(forKey: "autoThemeMode") ?? "") ?? .sunriseSunset
-        self.worldClocksEnabled = defaults.bool(forKey: "worldClocksEnabled")
-        self.worldClocksPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "worldClocksPosition") ?? "") ?? .bottom
-        self.worldClocks = Self.decodeOrDefault([WorldClock].self, key: "worldClocks", defaults: defaults, fallback: [])
-        self.showTimezoneAbbreviation = defaults.object(forKey: "showTimezoneAbbreviation") as? Bool ?? true
-        self.showDayDifference = defaults.object(forKey: "showDayDifference") as? Bool ?? true
-        self.newsTickerEnabled = defaults.bool(forKey: "newsTickerEnabled")
-        self.newsTickerStyle = NewsTickerStyle(rawValue: defaults.string(forKey: "newsTickerStyle") ?? "") ?? .scrolling
-        self.newsFeeds = Self.decodeOrDefault([NewsFeed].self, key: "newsFeeds", defaults: defaults, fallback: NewsFeed.builtInFeeds)
-        self.newsRefreshInterval = defaults.object(forKey: "newsRefreshInterval") as? Double ?? 15.0
-        self.newsScrollSpeed = defaults.object(forKey: "newsScrollSpeed") as? Double ?? 50.0
-        self.newsRotateInterval = defaults.object(forKey: "newsRotateInterval") as? Double ?? 10.0
-        self.newsMaxAgeDays = defaults.object(forKey: "newsMaxAgeDays") as? Int ?? 3
-        self.calendarEnabled = defaults.bool(forKey: "calendarEnabled")
-        self.calendarShowCountdown = defaults.object(forKey: "calendarShowCountdown") as? Bool ?? true
-        self.calendarShowAgenda = defaults.bool(forKey: "calendarShowAgenda")
-        self.calendarAgendaPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "calendarAgendaPosition") ?? "") ?? .side
-        self.selectedCalendarIDs = defaults.stringArray(forKey: "selectedCalendarIDs") ?? []
-        self.iCalFeeds = Self.decodeOrDefault([ICalFeed].self, key: "iCalFeeds", defaults: defaults, fallback: [])
-        self.alarms = Self.decodeOrDefault([Alarm].self, key: "alarms", defaults: defaults, fallback: [])
-        self.alarmOutputDeviceUID = defaults.string(forKey: "alarmOutputDeviceUID") ?? ""
+        self.userDefaultsStore = defaults
 
         // Migration: build a bookmark from a legacy raw path so existing
         // custom-background users don't lose their selection. This runs
@@ -368,26 +263,7 @@ final class AppSettings {
                 relativeTo: nil
             ) {
                 self.customBackgroundBookmark = data
-                defaults.set(data, forKey: "customBackgroundBookmark")
             }
-        }
-    }
-
-    /// Decodes a Codable value from UserDefaults. On decode failure, logs
-    /// the error and returns `fallback`. A logged decode failure usually
-    /// means a missed schema migration — see `SchemaMigration.swift`.
-    private static func decodeOrDefault<T: Decodable>(
-        _ type: T.Type,
-        key: String,
-        defaults: UserDefaults,
-        fallback: T
-    ) -> T {
-        guard let data = defaults.data(forKey: key) else { return fallback }
-        do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
-            logger.error("AppSettings decode failed for \(key, privacy: .public): \(String(describing: error), privacy: .public). Falling back to default — likely a missed schema migration.")
-            return fallback
         }
     }
 }
