@@ -5,6 +5,13 @@ actor NatureBackgroundService {
     private let cacheDirectory: URL
     private var cachedImages: [URL] = []
 
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
+
     // Curated nature/landscape image URLs from Unsplash (free to use)
     private let natureImageURLs = [
         // Mountains & Peaks
@@ -108,7 +115,7 @@ actor NatureBackgroundService {
         guard let url = URL(string: urlString) else { return nil }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await session.data(from: url)
             guard let image = NSImage(data: data) else { return nil }
 
             // Save to cache
@@ -121,7 +128,7 @@ actor NatureBackgroundService {
 
             return image
         } catch {
-            print("Failed to download nature image: \(error)")
+            print("Failed to download nature image (network error)")
             return nil
         }
     }
