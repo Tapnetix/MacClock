@@ -416,8 +416,8 @@ struct MainClockView: View {
         }
         .onChange(of: settings.customBackgroundPath) { _, newPath in
             if settings.backgroundMode == .custom {
-                let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date()) ?? Date()
-                let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date()) ?? Date()
+                let sunrise = weather?.sunrise ?? Constants.defaultSunriseToday()
+                let sunset = weather?.sunset ?? Constants.defaultSunsetToday()
                 backgroundManager.updateBackground(
                     sunrise: sunrise,
                     sunset: sunset,
@@ -485,16 +485,16 @@ struct MainClockView: View {
                     if !settings.manualLocationName.isEmpty {
                         location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
                     } else {
-                        // Default to San Francisco
-                        location = (37.7749, -122.4194, "San Francisco")
+                        // Default location
+                        location = (Constants.defaultLatitude, Constants.defaultLongitude, Constants.defaultLocationName)
                     }
                 }
             } else {
                 if !settings.manualLocationName.isEmpty {
                     location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
                 } else {
-                    // Default to San Francisco
-                    location = (37.7749, -122.4194, "San Francisco")
+                    // Default location
+                    location = (Constants.defaultLatitude, Constants.defaultLongitude, Constants.defaultLocationName)
                 }
             }
 
@@ -524,8 +524,8 @@ struct MainClockView: View {
                 currentNatureImage = await natureService.getNextImage()
             }
         case .timeOfDay, .custom:
-            let sunrise = weather?.sunrise ?? Calendar.current.date(bySettingHour: 6, minute: 30, second: 0, of: Date()) ?? Date()
-            let sunset = weather?.sunset ?? Calendar.current.date(bySettingHour: 18, minute: 30, second: 0, of: Date()) ?? Date()
+            let sunrise = weather?.sunrise ?? Constants.defaultSunriseToday()
+            let sunset = weather?.sunset ?? Constants.defaultSunsetToday()
             backgroundManager.updateBackground(
                 sunrise: sunrise,
                 sunset: sunset,
