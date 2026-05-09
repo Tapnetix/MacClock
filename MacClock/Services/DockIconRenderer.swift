@@ -6,6 +6,12 @@ final class DockIconRenderer {
     private var lastRenderedMinute: Int = -1
     var use24Hour: Bool = false
 
+    /// Nonisolated so SwiftUI `@State` default-value evaluation (which runs
+    /// in a synchronous nonisolated context under Swift 5.10) can construct
+    /// this. The stored properties initialise to MainActor-safe defaults
+    /// (nil, -1, false) so no actor-isolated work happens here.
+    nonisolated init() {}
+
     func startUpdating() {
         updateIcon()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in

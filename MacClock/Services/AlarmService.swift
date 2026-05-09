@@ -36,8 +36,13 @@ final class AlarmService {
     /// Current snoozeUntil value, if any. Test-only.
     @ObservationIgnored var testSnoozeUntil: Date? { snoozeUntil }
 
-    init() {
-        requestNotificationPermission()
+    nonisolated init() {
+        // Dispatch the MainActor-isolated permission prompt off the init path
+        // so this initialiser is callable from any actor (e.g. SwiftUI @State
+        // default values, which Swift 5.10 evaluates in a nonisolated context).
+        Task { @MainActor in
+            self.requestNotificationPermission()
+        }
     }
 
     /// Returns `UNUserNotificationCenter.current()` only when running in a real
