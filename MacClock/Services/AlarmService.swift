@@ -36,14 +36,12 @@ final class AlarmService {
     /// Current snoozeUntil value, if any. Test-only.
     @ObservationIgnored var testSnoozeUntil: Date? { snoozeUntil }
 
-    nonisolated init() {
-        // Dispatch the MainActor-isolated permission prompt off the init path
-        // so this initialiser is callable from any actor (e.g. SwiftUI @State
-        // default values, which Swift 5.10 evaluates in a nonisolated context).
-        Task { @MainActor in
-            self.requestNotificationPermission()
-        }
-    }
+    nonisolated init() {}
+
+    /// Tracks whether we've already prompted for notification permission so
+    /// repeated calls to `startMonitoring` don't re-prompt on each settings
+    /// change.
+    @ObservationIgnored private var didRequestNotificationPermission = false
 
     /// Returns `UNUserNotificationCenter.current()` only when running in a real
     /// app context. In `swift test` the call crashes because there's no bundle
@@ -62,10 +60,17 @@ final class AlarmService {
     }
 
     func startMonitoring(alarms: [Alarm]) {
+        if !didRequestNotificationPermission {
+            requestNotificationPermission()
+            didRequestNotificationPermission = true
+        }
         checkTimer?.invalidate()
         checkTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            // Bind weak `self` to a `let` before crossing into Task —
+            // Swift 5.10 strict-concurrency rejects re-capturing the var.
+            guard let strongSelf = self else { return }
             Task { @MainActor in
-                self?.checkAlarms(alarms)
+                strongSelf.checkAlarms(alarms)
             }
         }
     }
@@ -117,8 +122,9 @@ final class AlarmService {
         // Auto-snooze after 2 minutes if not dismissed
         autoSnoozeTimer?.invalidate()
         autoSnoozeTimer = Timer.scheduledTimer(withTimeInterval: Self.autoSnoozeSeconds, repeats: false) { [weak self] _ in
+            guard let strongSelf = self else { return }
             Task { @MainActor in
-                self?.autoSnooze()
+                strongSelf.autoSnooze()
             }
         }
     }
