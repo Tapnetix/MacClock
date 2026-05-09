@@ -1,7 +1,4 @@
 import SwiftUI
-import ServiceManagement
-import AppKit
-import EventKit
 
 enum SettingsTab: String, CaseIterable {
     case general = "General"
