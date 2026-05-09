@@ -56,6 +56,14 @@ enum Snapshot {
         tolerance: Double = defaultTolerance,
         sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
+        // Skip on CI / sandboxed environments where font rendering differs
+        // from the developer machine that recorded the references. Snapshot
+        // tests are intended to catch local visual regressions during dev,
+        // not to gate CI.
+        if ProcessInfo.processInfo.environment["MACCLOCK_SKIP_SNAPSHOTS"] == "1" {
+            return
+        }
+
         let actualData = png(of: view, size: size, scale: scale)
         let actual = try #require(actualData, "ImageRenderer returned nil for \(name)", sourceLocation: sourceLocation)
 

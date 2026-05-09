@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Snapshot tests assert against PNGs recorded on the developer's machine;
+  # font rendering on hosted runners differs slightly so we skip them here
+  # and rely on the unit/service/accessibility/interaction tests instead.
+  MACCLOCK_SKIP_SNAPSHOTS: "1"
+
 jobs:
   test:
     name: Build & test
@@ -25,7 +31,6 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
-          ls /Applications/ | grep -i xcode || true
 
       - name: Build (debug)
         run: swift build

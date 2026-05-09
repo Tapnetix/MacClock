@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+env:
+  MACCLOCK_SKIP_SNAPSHOTS: "1"
+
 jobs:
   release:
     name: Build & publish release
