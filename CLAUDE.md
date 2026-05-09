@@ -58,18 +58,13 @@ Cache as `private static let` on the view/service. **Never** create one inside `
 
 ### Networking
 
-Each service owns its own `URLSession` configured with timeouts:
+All app network services share a single configured session:
 
 ```swift
-private let session: URLSession = {
-    let config = URLSessionConfiguration.default
-    config.timeoutIntervalForRequest = 30
-    config.timeoutIntervalForResource = 60
-    return URLSession(configuration: config)
-}()
+private let session = URLSession.standardConfigured
 ```
 
-Never `URLSession.shared` — it has no timeout, hangs forever on slow servers. Applies to `WeatherService`, `ICalService`, `NewsService`, `FeedDiscoveryService`.
+`URLSession.standardConfigured` (in `MacClock/Services/URLSession+Configured.swift`) builds a session with `timeoutIntervalForRequest = 30` and `timeoutIntervalForResource = 60`. Never use `URLSession.shared` — it has no timeout and hangs forever on slow servers. Applies to `WeatherService`, `ICalService`, `NewsService`, `FeedDiscoveryService`, `NatureBackgroundService`. New services should use the same factory rather than re-declaring an inline config block.
 
 ### Closures and references
 
