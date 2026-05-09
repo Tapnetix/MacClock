@@ -1027,10 +1027,10 @@ struct TestICalFeedSheet: View {
 
             Divider()
 
-            Text("URL: \(feed.url)")
+            Text("Host: \(URL(string: feed.url)?.host ?? "Unknown")")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .lineLimit(1)
                 .truncationMode(.middle)
 
             Button("Close") {
