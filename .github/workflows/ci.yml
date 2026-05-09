@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Build & test
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - name: Checkout (no external action — org policy is local_only)
@@ -25,6 +25,7 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
+          ls /Applications/ | grep -i xcode || true
 
       - name: Build (debug)
         run: swift build
