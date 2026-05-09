@@ -31,4 +31,93 @@ struct FeedDiscoveryTests {
         #expect(service.isURL("tech news") == false)
         #expect(service.isURL("techcrunch") == false)
     }
+
+    @Test("Returns empty array for HTML with no link tags")
+    func noLinksInHTML() {
+        let html = "<html><body><p>just text</p></body></html>"
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.isEmpty)
+    }
+
+    @Test("Skips link tags without href")
+    func skipsLinksWithoutHref() {
+        let html = """
+        <html><head>
+            <link rel="alternate" type="application/rss+xml" title="Broken">
+            <link rel="alternate" type="application/rss+xml" title="Good" href="https://example.com/feed.xml">
+        </head></html>
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.count == 1)
+        #expect(feeds[0].title == "Good")
+    }
+
+    @Test("Resolves relative href starting with /")
+    func resolvesRelativeHref() {
+        let html = """
+        <link rel="alternate" type="application/rss+xml" title="Rel" href="/feed.xml">
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com/blog")!)
+        #expect(feeds.count == 1)
+        #expect(feeds[0].feedURL == "https://example.com/feed.xml")
+    }
+
+    @Test("Resolves relative href without leading /")
+    func resolvesRelativeNoSlash() {
+        let html = """
+        <link rel="alternate" type="application/rss+xml" title="Rel" href="feed.xml">
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.count == 1)
+        // Concatenation pattern: baseURL + "/" + href
+        #expect(feeds[0].feedURL == "https://example.com/feed.xml")
+    }
+
+    @Test("Handles mixed RSS and Atom feed types in same page")
+    func mixedFeedTypes() {
+        let html = """
+        <html><head>
+            <link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml">
+            <link rel="alternate" type="application/atom+xml" title="Atom" href="/atom.xml">
+            <link rel="alternate" type="application/json" title="JSON Feed" href="/feed.json">
+        </head></html>
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        // Only RSS and Atom are recognized; JSON Feed is ignored.
+        #expect(feeds.count == 2)
+        let titles = feeds.map { $0.title }
+        #expect(titles.contains("RSS"))
+        #expect(titles.contains("Atom"))
+    }
+
+    @Test("Falls back to default title when missing")
+    func defaultTitle() {
+        let html = """
+        <link rel="alternate" type="application/rss+xml" href="/feed.xml">
+        """
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.count == 1)
+        #expect(feeds[0].title == "RSS Feed")
+    }
+
+    @Test("Handles malformed HTML without crashing")
+    func malformedHTML() {
+        let html = "<<>>not really << html<<<<"
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: html, baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.isEmpty)
+    }
+
+    @Test("Handles empty HTML")
+    func emptyHTML() {
+        let service = FeedDiscoveryService()
+        let feeds = service.parseRSSLinks(from: "", baseURL: URL(string: "https://example.com")!)
+        #expect(feeds.isEmpty)
+    }
 }
