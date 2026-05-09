@@ -52,5 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
-          gh release create "$TAG" --title "MacClock $TAG" --generate-notes MacClock.app.zip
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --title "MacClock $TAG" \
+            --generate-notes \
+            MacClock.app.zip
