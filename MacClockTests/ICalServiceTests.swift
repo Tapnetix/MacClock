@@ -127,6 +127,137 @@ struct ICalServiceTests {
         #expect(service.loadCachedEvents().isEmpty)
     }
 
+    @Test("Unfolds RFC 5545 continuation lines (space prefix)")
+    func unfoldsContinuationLines() {
+        // RFC 5545 §3.1: long content lines are folded by inserting CRLF + a single
+        // whitespace octet. To unfold, both the CRLF and the leading whitespace are
+        // removed. The remaining characters on the continuation line — including any
+        // *additional* leading whitespace — are preserved verbatim.
+        //
+        // Fixture below: "Long" + CRLF + space + "title that" → "Longtitle that"
+        //                "title that" + CRLF + space + " spans lines" → "title that spans lines"
+        // (the second fold has TWO spaces; the first is the fold marker, the second is preserved)
+        let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:fold-1@example.com\r\nDTSTART:20260601T100000Z\r\nDTEND:20260601T110000Z\r\nSUMMARY:Long\r\n title that\r\n  spans lines\r\nEND:VEVENT\r\nEND:VCALENDAR"
+
+        let service = ICalService()
+        let events = service.parseICS(ics, feedName: "Test", colorHex: "#FF0000")
+
+        #expect(events.count == 1)
+        #expect(events[0].title == "Longtitle that spans lines")
+    }
+
+    @Test("Parses TZID-anchored DTSTART correctly")
+    func parsesTZIDAnchoredDateTime() {
+        let ics = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:tzid-1@example.com
+        DTSTART;TZID=America/New_York:20260601T100000
+        DTEND;TZID=America/New_York:20260601T110000
+        SUMMARY:NYC Meeting
+        END:VEVENT
+        END:VCALENDAR
+        """
+
+        let service = ICalService()
+        let events = service.parseICS(ics, feedName: "Test", colorHex: "#FF0000")
+
+        #expect(events.count == 1)
+        // 10:00 EDT (UTC-4 in June) = 14:00 UTC.
+        let utc = TimeZone(identifier: "UTC")!
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = utc
+        let comps = cal.dateComponents([.year, .month, .day, .hour], from: events[0].startDate)
+        #expect(comps.year == 2026)
+        #expect(comps.month == 6)
+        #expect(comps.day == 1)
+        #expect(comps.hour == 14)
+    }
+
+    @Test("RRULE FREQ=DAILY expands today's occurrence")
+    func rruleDailyExpandsToday() {
+        // Anchor RRULE start to "yesterday" so today is occurrence #2.
+        let cal = Calendar.current
+        let yesterday = cal.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        let yFormatter = DateFormatter()
+        yFormatter.dateFormat = "yyyyMMdd"
+        yFormatter.locale = Locale(identifier: "en_US_POSIX")
+        yFormatter.timeZone = TimeZone.current
+        let yStr = yFormatter.string(from: yesterday)
+
+        let ics = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:rrule-daily-1@example.com
+        DTSTART:\(yStr)T100000Z
+        DTEND:\(yStr)T110000Z
+        SUMMARY:Daily Standup
+        RRULE:FREQ=DAILY;COUNT=3
+        END:VEVENT
+        END:VCALENDAR
+        """
+
+        let service = ICalService()
+        let events = service.parseICS(ics, feedName: "Test", colorHex: "#FF0000")
+
+        // Today should produce one expanded occurrence (the parser only emits today).
+        #expect(events.count == 1)
+        #expect(events[0].title == "Daily Standup")
+    }
+
+    @Test("Malformed: unbalanced VEVENT does not crash")
+    func malformedUnbalancedVEvent() {
+        let ics = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:half-event@example.com
+        DTSTART:20260601T100000Z
+        SUMMARY:Half written
+        END:VCALENDAR
+        """
+
+        let service = ICalService()
+        let events = service.parseICS(ics, feedName: "Test", colorHex: "#FF0000")
+        // Parser swallows the unterminated event; returns whatever was complete (may be 0).
+        #expect(events.count <= 1)
+    }
+
+    @Test("Malformed: bad date format yields no event")
+    func malformedBadDateFormat() {
+        let ics = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        BEGIN:VEVENT
+        UID:bad-date@example.com
+        DTSTART:not-a-date
+        DTEND:also-not-a-date
+        SUMMARY:Garbage
+        END:VEVENT
+        END:VCALENDAR
+        """
+
+        let service = ICalService()
+        let events = service.parseICS(ics, feedName: "Test", colorHex: "#FF0000")
+        #expect(events.count == 0)
+    }
+
+    @Test("Malformed: completely empty input returns empty array")
+    func malformedEmptyInput() {
+        let service = ICalService()
+        let events = service.parseICS("", feedName: "Test", colorHex: "#FF0000")
+        #expect(events.isEmpty)
+    }
+
+    @Test("Malformed: garbage non-ICS input returns empty array")
+    func malformedGarbageInput() {
+        let service = ICalService()
+        let events = service.parseICS("<html><body>not ical</body></html>", feedName: "Test", colorHex: "#FF0000")
+        #expect(events.isEmpty)
+    }
+
     @Test("Legacy UserDefaults keys are purged once")
     func legacyKeysPurged() {
         let suite = UserDefaults(suiteName: "test-legacy-purge-\(UUID().uuidString)")!
