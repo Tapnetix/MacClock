@@ -25,7 +25,11 @@ enum SettingsTab: String, CaseIterable {
         case .extras: return "sparkles"
         }
     }
+
+    var title: String { rawValue }
 }
+
+extension SettingsTab: TabKind {}
 
 struct SettingsView: View {
     @Bindable var settings: AppSettings
@@ -46,7 +50,7 @@ struct SettingsView: View {
             // Toolbar-style tab bar
             HStack(spacing: 2) {
                 ForEach(SettingsTab.allCases, id: \.self) { tab in
-                    SettingsTabButton(
+                    TabButton(
                         tab: tab,
                         isSelected: selectedTab == tab
                     ) {
@@ -108,32 +112,6 @@ struct SettingsView: View {
         .sheet(isPresented: $showAlarmPanel) {
             AlarmPanelView(settings: settings, alarmService: alarmService)
         }
-    }
-}
-
-// MARK: - Tab Button
-
-struct SettingsTabButton: View {
-    let tab: SettingsTab
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 18))
-                    .frame(height: 20)
-                Text(tab.rawValue)
-                    .font(.system(size: 10))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-            .foregroundStyle(isSelected ? .primary : .secondary)
-            .cornerRadius(6)
-        }
-        .buttonStyle(.plain)
     }
 }
 

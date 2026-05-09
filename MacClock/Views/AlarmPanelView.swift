@@ -13,7 +13,11 @@ enum AlarmTab: String, CaseIterable {
         case .stopwatch: return "stopwatch.fill"
         }
     }
+
+    var title: String { rawValue }
 }
+
+extension AlarmTab: TabKind {}
 
 struct AlarmPanelView: View {
     @Bindable var settings: AppSettings
@@ -49,7 +53,7 @@ struct AlarmPanelView: View {
             // Toolbar-style tab bar
             HStack(spacing: 4) {
                 ForEach(AlarmTab.allCases, id: \.self) { tab in
-                    AlarmTabButton(
+                    TabButton(
                         tab: tab,
                         isSelected: selectedTab == tab
                     ) {
@@ -93,32 +97,6 @@ struct AlarmPanelView: View {
                 isPresented: $showAlarmEditor
             )
         }
-    }
-}
-
-// MARK: - Tab Button
-
-struct AlarmTabButton: View {
-    let tab: AlarmTab
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 18))
-                    .frame(height: 20)
-                Text(tab.rawValue)
-                    .font(.system(size: 10))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-            .foregroundStyle(isSelected ? .primary : .secondary)
-            .cornerRadius(6)
-        }
-        .buttonStyle(.plain)
     }
 }
 
