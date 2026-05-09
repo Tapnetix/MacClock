@@ -18,6 +18,37 @@ enum TimeOfDay: String, CaseIterable {
     }
 }
 
+/// Image extensions accepted as custom backgrounds. Lowercased.
+private let allowedBackgroundExtensions: Set<String> = [
+    "jpg", "jpeg", "png", "heic", "heif", "webp"
+]
+
+/// Validates that a URL points to an existing, regular image file
+/// inside the user's home directory tree (not a symlink escaping it).
+/// Returns the resolved canonical URL on success, nil otherwise.
+private func validateBackgroundImageURL(_ url: URL) -> URL? {
+    let fm = FileManager.default
+
+    // Resolve symlinks so we can see where the path actually points.
+    let resolved = url.resolvingSymlinksInPath()
+
+    // Check existence + that it's a regular file, not a directory.
+    var isDirectory: ObjCBool = false
+    guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory) else { return nil }
+    guard !isDirectory.boolValue else { return nil }
+
+    // Extension allowlist.
+    let ext = resolved.pathExtension.lowercased()
+    guard allowedBackgroundExtensions.contains(ext) else { return nil }
+
+    // Confirm the resolved path lives under the user's home directory tree.
+    // (Prevents a symlink in Pictures/ that points to /etc/passwd.)
+    let homePath = fm.homeDirectoryForCurrentUser.standardized.path
+    guard resolved.standardized.path.hasPrefix(homePath) else { return nil }
+
+    return resolved
+}
+
 @Observable
 final class BackgroundManager {
     var currentTimeOfDay: TimeOfDay = .day
@@ -56,39 +87,62 @@ final class BackgroundManager {
         return .night
     }
 
-    func updateBackground(sunrise: Date, sunset: Date, customPath: String?) {
+    func updateBackground(sunrise: Date, sunset: Date, customBookmark: Data?) {
         currentTimeOfDay = timeOfDay(at: Date(), sunrise: sunrise, sunset: sunset)
 
-        if let path = customPath, !path.isEmpty {
-            loadCustomImage(from: path)
+        if let bookmark = customBookmark, !bookmark.isEmpty {
+            loadCustomImage(from: bookmark)
         } else {
             loadBundledImage(for: currentTimeOfDay)
         }
     }
 
-    private func loadCustomImage(from path: String) {
-        let url = URL(fileURLWithPath: path)
-        var isDirectory: ObjCBool = false
+    private func loadCustomImage(from bookmark: Data) {
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: [.withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            // Bookmark unresolvable — fall back to bundled image.
+            loadBundledImage(for: currentTimeOfDay)
+            return
+        }
 
-        if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) {
-            if isDirectory.boolValue {
-                // Load random image from folder
-                loadRandomImageFromFolder(url)
-            } else {
-                // Load single image
-                currentImage = NSImage(contentsOf: url)
+        let didStartAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                url.stopAccessingSecurityScopedResource()
             }
+        }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
+            loadBundledImage(for: currentTimeOfDay)
+            return
+        }
+
+        if isDirectory.boolValue {
+            loadRandomImageFromFolder(url)
+        } else if let validated = validateBackgroundImageURL(url) {
+            currentImage = NSImage(contentsOf: validated)
+        } else {
+            loadBundledImage(for: currentTimeOfDay)
         }
     }
 
     private func loadRandomImageFromFolder(_ folderURL: URL) {
-        let imageExtensions = ["jpg", "jpeg", "png", "heic"]
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: folderURL,
             includingPropertiesForKeys: nil
         ) else { return }
 
-        let images = contents.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
+        // Filter to allowlisted extensions and validated files.
+        let images = contents
+            .filter { allowedBackgroundExtensions.contains($0.pathExtension.lowercased()) }
+            .compactMap { validateBackgroundImageURL($0) }
+
         if let randomImage = images.randomElement() {
             currentImage = NSImage(contentsOf: randomImage)
         }

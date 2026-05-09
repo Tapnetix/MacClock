@@ -96,6 +96,16 @@ final class AppSettings {
         didSet { defaults.set(customBackgroundPath, forKey: "customBackgroundPath") }
     }
 
+    var customBackgroundBookmark: Data? {
+        didSet {
+            if let data = customBackgroundBookmark {
+                defaults.set(data, forKey: "customBackgroundBookmark")
+            } else {
+                defaults.removeObject(forKey: "customBackgroundBookmark")
+            }
+        }
+    }
+
     var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
     }
@@ -301,6 +311,7 @@ final class AppSettings {
         self.manualLatitude = defaults.double(forKey: "manualLatitude")
         self.manualLongitude = defaults.double(forKey: "manualLongitude")
         self.customBackgroundPath = defaults.string(forKey: "customBackgroundPath")
+        self.customBackgroundBookmark = defaults.data(forKey: "customBackgroundBookmark")
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.clockFontSize = defaults.object(forKey: "clockFontSize") as? Double ?? 96.0
         self.backgroundMode = BackgroundMode(rawValue: defaults.string(forKey: "backgroundMode") ?? "") ?? .timeOfDay
@@ -362,5 +373,21 @@ final class AppSettings {
             self.alarms = []
         }
         self.alarmOutputDeviceUID = defaults.string(forKey: "alarmOutputDeviceUID") ?? ""
+
+        // Migration: build a bookmark from a legacy raw path so existing
+        // custom-background users don't lose their selection. This runs
+        // once; subsequent launches read the persisted bookmark directly.
+        if customBackgroundBookmark == nil,
+           let path = customBackgroundPath, !path.isEmpty {
+            let url = URL(fileURLWithPath: path)
+            if let data = try? url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                self.customBackgroundBookmark = data
+                defaults.set(data, forKey: "customBackgroundBookmark")
+            }
+        }
     }
 }

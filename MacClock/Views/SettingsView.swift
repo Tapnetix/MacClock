@@ -429,6 +429,7 @@ struct LocationTabView: View {
                         if settings.customBackgroundPath != nil {
                             Button("Clear") {
                                 settings.customBackgroundPath = nil
+                                settings.customBackgroundBookmark = nil
                             }
                         }
                     }
@@ -457,8 +458,28 @@ struct LocationTabView: View {
         panel.canChooseFiles = true
         panel.allowedContentTypes = [.image, .folder]
 
-        if panel.runModal() == .OK {
-            settings.customBackgroundPath = panel.url?.path
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        // Persist a bookmark so the path keeps working after relaunch
+        // and any future sandboxing change.
+        do {
+            let bookmark = try url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            settings.customBackgroundBookmark = bookmark
+            settings.customBackgroundPath = url.path  // mirror for display only
+        } catch {
+            // Fall back to a non-security-scoped bookmark for unsigned builds.
+            if let bookmark = try? url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                settings.customBackgroundBookmark = bookmark
+                settings.customBackgroundPath = url.path
+            }
         }
     }
 }

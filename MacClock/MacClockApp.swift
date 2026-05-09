@@ -382,14 +382,14 @@ struct MainClockView: View {
         .onChange(of: settings.backgroundCycleInterval) { _, _ in
             setupBackgroundTimer()
         }
-        .onChange(of: settings.customBackgroundPath) { _, newPath in
+        .onChange(of: settings.customBackgroundBookmark) { _, newBookmark in
             if settings.backgroundMode == .custom {
                 let sunrise = weather?.sunrise ?? Constants.defaultSunriseToday()
                 let sunset = weather?.sunset ?? Constants.defaultSunsetToday()
                 backgroundManager.updateBackground(
                     sunrise: sunrise,
                     sunset: sunset,
-                    customPath: newPath
+                    customBookmark: newBookmark
                 )
             }
         }
@@ -477,7 +477,7 @@ struct MainClockView: View {
                 backgroundManager.updateBackground(
                     sunrise: weather.sunrise,
                     sunset: weather.sunset,
-                    customPath: settings.customBackgroundPath
+                    customBookmark: settings.customBackgroundBookmark
                 )
             }
         } catch {
@@ -497,7 +497,7 @@ struct MainClockView: View {
             backgroundManager.updateBackground(
                 sunrise: sunrise,
                 sunset: sunset,
-                customPath: settings.backgroundMode == .custom ? settings.customBackgroundPath : nil
+                customBookmark: settings.backgroundMode == .custom ? settings.customBackgroundBookmark : nil
             )
         }
     }
