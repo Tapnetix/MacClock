@@ -34,64 +34,76 @@ struct NewsTickerView: View {
 
     private var scrollingTicker: some View {
         GeometryReader { geometry in
-            let text = newsItems.map { $0.displayTitle }.joined(separator: "  •  ")
-
-            HStack(spacing: 0) {
-                // Left navigation arrow
-                if isHovering {
-                    Button {
-                        navigatePrevious()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(theme.primaryColor.opacity(0.8))
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Previous headline")
-                    .transition(.opacity)
-                }
-
-                Text(text)
+            if newsItems.isEmpty {
+                Text("No news available")
                     .font(.system(size: 14))
-                    .foregroundStyle(theme.primaryColor)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .offset(x: scrollOffset)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .clipped()
-                    .onTapGesture {
-                        openCurrentItem()
+                    .foregroundStyle(theme.primaryColor.opacity(0.5))
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                let text = newsItems.map { $0.displayTitle }.joined(separator: "  •  ")
+
+                HStack(spacing: 0) {
+                    // Left navigation arrow
+                    if isHovering {
+                        Button {
+                            navigatePrevious()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(theme.primaryColor.opacity(0.8))
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Previous headline")
+                        .transition(.opacity)
                     }
 
-                // Right navigation arrow
-                if isHovering {
-                    Button {
-                        navigateNext()
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(theme.primaryColor.opacity(0.8))
-                            .frame(width: 30, height: 30)
+                    Text(text)
+                        .font(.system(size: 14))
+                        .foregroundStyle(theme.primaryColor)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .offset(x: scrollOffset)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .clipped()
+                        .onTapGesture {
+                            openCurrentItem()
+                        }
+
+                    // Right navigation arrow
+                    if isHovering {
+                        Button {
+                            navigateNext()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(theme.primaryColor.opacity(0.8))
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Next headline")
+                        .transition(.opacity)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Next headline")
-                    .transition(.opacity)
                 }
-            }
-            .animation(.easeInOut(duration: 0.2), value: isHovering)
-            .onHover { hovering in
-                isHovering = hovering
-            }
-            .onAppear {
-                startScrolling(containerWidth: geometry.size.width)
+                .animation(.easeInOut(duration: 0.2), value: isHovering)
+                .onHover { hovering in
+                    isHovering = hovering
+                }
+                .onAppear {
+                    startScrolling(containerWidth: geometry.size.width)
+                }
             }
         }
     }
 
     private var rotatingTicker: some View {
         Group {
-            if !newsItems.isEmpty {
+            if newsItems.isEmpty {
+                Text("No news available")
+                    .font(.system(size: 14))
+                    .foregroundStyle(theme.primaryColor.opacity(0.5))
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
                 let item = newsItems[currentIndex % newsItems.count]
 
                 HStack(spacing: 0) {
