@@ -59,6 +59,12 @@ struct WorldClockItem: View {
     let showDayDiff: Bool
     let compact: Bool
 
+    private static let accessibilityTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f
+    }()
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
             if compact {
@@ -88,6 +94,9 @@ struct WorldClockItem: View {
             }
         }
         .frame(minWidth: 70)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(clock.cityName) time")
+        .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
     }
 
     private func expandedLayout(currentTime: Date) -> some View {
@@ -114,6 +123,9 @@ struct WorldClockItem: View {
                     .foregroundStyle(theme.accentColor.opacity(0.6))
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(clock.cityName) time")
+        .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
     }
 }
 

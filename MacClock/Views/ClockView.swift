@@ -43,6 +43,14 @@ struct ClockView: View {
         return f
     }()
 
+    /// Used only for accessibility — natural-language form, not the
+    /// DSEG7 LCD form. VoiceOver reads "1:42 PM" naturally.
+    private static let accessibilityTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f
+    }()
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
             let currentTime = context.date
@@ -77,6 +85,9 @@ struct ClockView: View {
                     .foregroundStyle(theme.accentColor)
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Current time")
+            .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
         }
     }
 

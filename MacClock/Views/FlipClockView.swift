@@ -248,6 +248,11 @@ struct FlipClockView: View {
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "EEEE, MMMM d, yyyy"; return f
     }()
+    private static let accessibilityTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f
+    }()
 
     private var dateFontSize: CGFloat {
         max(14, settings.clockFontSize / 4.8)
@@ -304,6 +309,9 @@ struct FlipClockView: View {
                         .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Current time")
+                .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
             }
         }
     }

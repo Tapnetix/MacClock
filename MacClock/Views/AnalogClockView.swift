@@ -30,6 +30,12 @@ struct AnalogClockView: View {
         return f
     }()
 
+    private static let accessibilityTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f
+    }()
+
     var body: some View {
         if settings.showSeconds {
             TimelineView(.animation) { context in
@@ -102,6 +108,9 @@ struct AnalogClockView: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .offset(y: -20)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Current time")
+            .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
         }
     }
 
