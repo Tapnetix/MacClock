@@ -82,7 +82,7 @@ actor ICalService {
         // These are dates where the original RRULE occurrence was modified/moved
         var recurrenceIdDates: Set<String> = [] // Key: "UID_date" to track which UID+date combos are overridden
         let today = Calendar.current.startOfDay(for: Date())
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86400)
 
         var inEvent = false
         var currentEvent: [String: String] = [:]
@@ -498,6 +498,7 @@ actor ICalService {
         // Format: 20260129
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone.current
         return formatter.date(from: string)
     }
@@ -513,6 +514,7 @@ actor ICalService {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd'T'HHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
 
         // Determine timezone: UTC > explicit TZID > local
         if isUTC {
