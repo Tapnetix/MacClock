@@ -17,7 +17,8 @@ let package = Package(
         .testTarget(
             name: "MacClockTests",
             dependencies: ["MacClock"],
-            path: "MacClockTests"
+            path: "MacClockTests",
+            exclude: ["UI/Snapshots"]
         )
     ]
 )
