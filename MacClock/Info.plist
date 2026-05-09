@@ -10,5 +10,7 @@
     <string>MacClock needs your location to show local weather conditions.</string>
     <key>NSCalendarsUsageDescription</key>
     <string>MacClock needs calendar access to display your upcoming events.</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>

@@ -61,6 +61,8 @@ cat > "$CONTENTS_DIR/Info.plist" << 'EOF'
     <string>MacClock needs your location to show local weather conditions.</string>
     <key>NSLocationUsageDescription</key>
     <string>MacClock needs your location to show local weather conditions.</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>
 EOF

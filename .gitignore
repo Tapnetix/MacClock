@@ -22,3 +22,10 @@ DerivedData/
 # Build artifacts
 build/
 MacClock.app/
+Screenshot*.png
+
+# Local-only working materials
+docs/plans/
+docs/superpowers/
+icon-mockups/
+diagnose_ical.swift
