@@ -59,6 +59,11 @@ struct WorldClockItem: View {
     let showDayDiff: Bool
     let compact: Bool
 
+    /// Test-only override for the rendered time. When non-nil, the view
+    /// renders that fixed date instead of subscribing to TimelineView.
+    /// Used by snapshot tests for deterministic PNGs.
+    var testDate: Date? = nil
+
     private static let accessibilityTimeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.timeStyle = .short
@@ -66,11 +71,19 @@ struct WorldClockItem: View {
     }()
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
+        if let testDate {
             if compact {
-                compactLayout(currentTime: context.date)
+                compactLayout(currentTime: testDate)
             } else {
-                expandedLayout(currentTime: context.date)
+                expandedLayout(currentTime: testDate)
+            }
+        } else {
+            TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                if compact {
+                    compactLayout(currentTime: context.date)
+                } else {
+                    expandedLayout(currentTime: context.date)
+                }
             }
         }
     }
