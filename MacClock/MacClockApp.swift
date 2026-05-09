@@ -94,7 +94,6 @@ struct MainClockView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var weather: WeatherData?
     @State private var dimManager = DimManager()
-    @State private var dimTimer: Timer?
     @State private var newsService = NewsService()
     @State private var newsItems: [NewsItem] = []
     @State private var calendarService = CalendarService()
@@ -149,55 +148,55 @@ struct MainClockView: View {
                         }
                 }
 
-            // Content
-            HStack(spacing: 0) {
-                // Main content
-                VStack {
-                    // Top bar: weather + calendar countdown
-                    HStack {
-                        WeatherView(
-                            weather: weather,
-                            useCelsius: settings.useCelsius,
-                            settings: settings,
-                            theme: effectiveTheme,
-                            showDetailPanel: $showWeatherDetail
-                        )
+            // Content (dimmable region)
+            DimContainer(settings: settings, weather: weather, dimManager: dimManager) {
+                HStack(spacing: 0) {
+                    // Main content
+                    VStack {
+                        // Top bar: weather + calendar countdown
+                        HStack {
+                            WeatherView(
+                                weather: weather,
+                                useCelsius: settings.useCelsius,
+                                settings: settings,
+                                theme: effectiveTheme,
+                                showDetailPanel: $showWeatherDetail
+                            )
 
-                        if settings.calendarEnabled && settings.calendarShowCountdown {
-                            CalendarCountdownView(event: nextEvent, theme: effectiveTheme)
+                            if settings.calendarEnabled && settings.calendarShowCountdown {
+                                CalendarCountdownView(event: nextEvent, theme: effectiveTheme)
+                            }
+
+                            Spacer()
                         }
+                        .padding()
 
                         Spacer()
+
+                        // Clock
+                        ClockStyleContainer(settings: settings, theme: effectiveTheme)
+
+                        Spacer()
+
+                        // World Clocks (bottom)
+                        if settings.worldClocksEnabled && settings.worldClocksPosition == .bottom && !settings.worldClocks.isEmpty {
+                            WorldClocksView(settings: settings, theme: effectiveTheme)
+                        }
                     }
-                    .padding()
+                    .frame(maxWidth: .infinity)
 
-                    Spacer()
-
-                    // Clock
-                    ClockStyleContainer(settings: settings, theme: effectiveTheme)
-
-                    Spacer()
-
-                    // World Clocks (bottom)
-                    if settings.worldClocksEnabled && settings.worldClocksPosition == .bottom && !settings.worldClocks.isEmpty {
+                    // World Clocks (side panel)
+                    if settings.worldClocksEnabled && settings.worldClocksPosition == .side && !settings.worldClocks.isEmpty {
                         WorldClocksView(settings: settings, theme: effectiveTheme)
                     }
-                }
-                .frame(maxWidth: .infinity)
 
-                // World Clocks (side panel)
-                if settings.worldClocksEnabled && settings.worldClocksPosition == .side && !settings.worldClocks.isEmpty {
-                    WorldClocksView(settings: settings, theme: effectiveTheme)
-                }
-
-                // Calendar Agenda (side panel)
-                if settings.calendarEnabled && settings.calendarShowAgenda && settings.calendarAgendaPosition == .side {
-                    CalendarAgendaView(events: todayEvents, theme: effectiveTheme)
-                        .frame(width: 150)
+                    // Calendar Agenda (side panel)
+                    if settings.calendarEnabled && settings.calendarShowAgenda && settings.calendarAgendaPosition == .side {
+                        CalendarAgendaView(events: todayEvents, theme: effectiveTheme)
+                            .frame(width: 150)
+                    }
                 }
             }
-            .opacity(dimManager.currentDimLevel)
-            .animation(.easeInOut(duration: 2.0), value: dimManager.currentDimLevel)
 
                 // Weather detail panel - rendered on top of all content
                 if showWeatherDetail, let weather = weather {
@@ -301,12 +300,6 @@ struct MainClockView: View {
             }
         }
         .onAppear {
-            // Setup dim manager
-            dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-            dimTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-                dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
-            }
-
             // Load news if enabled
             if settings.newsTickerEnabled {
                 Task { await loadNews() }
@@ -338,7 +331,6 @@ struct MainClockView: View {
             dockIconRenderer.startUpdating()
         }
         .onDisappear {
-            dimTimer?.invalidate()
             iCalTimer?.invalidate()
             alarmService.stopMonitoring()
             dockIconRenderer.stopUpdating()
@@ -352,7 +344,6 @@ struct MainClockView: View {
                 windowResizeObserver = nil
             }
         }
-        .onThemeSettingsChange(settings: settings, dimManager: dimManager, sunrise: weather?.sunrise, sunset: weather?.sunset)
         .onChange(of: settings.newsTickerEnabled) { _, enabled in
             if enabled {
                 Task { await loadNews() }
