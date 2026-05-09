@@ -93,13 +93,8 @@ struct MainClockView: View {
 
     @Environment(\.openWindow) private var openWindow
     @State private var weather: WeatherData?
-    @State private var natureService = NatureBackgroundService()
-    @State private var currentNatureImage: NSImage?
-    @State private var backgroundTimer: Timer?
     @State private var dimManager = DimManager()
     @State private var dimTimer: Timer?
-    @State private var previousBackgroundImage: NSImage?
-    @State private var backgroundOpacity: Double = 1.0
     @State private var newsService = NewsService()
     @State private var newsItems: [NewsItem] = []
     @State private var calendarService = CalendarService()
@@ -115,17 +110,6 @@ struct MainClockView: View {
     @State private var windowMoveObserver: NSObjectProtocol?
     @State private var windowResizeObserver: NSObjectProtocol?
 
-    private var displayedBackgroundImage: NSImage? {
-        switch settings.backgroundMode {
-        case .nature:
-            return currentNatureImage
-        case .custom:
-            return backgroundManager.currentImage
-        case .timeOfDay:
-            return backgroundManager.currentImage
-        }
-    }
-
     private var effectiveTheme: ColorTheme {
         dimManager.effectiveTheme
     }
@@ -140,26 +124,12 @@ struct MainClockView: View {
         ) {
         GeometryReader { geometry in
             ZStack {
-                // Previous background (for crossfade)
-                if let prevImage = previousBackgroundImage {
-                    Image(nsImage: prevImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                }
-
-                // Current background
-                if let image = displayedBackgroundImage {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                        .opacity(backgroundOpacity)
-                } else {
-                    Color.black
-                }
+                BackgroundContainer(
+                    settings: settings,
+                    backgroundManager: backgroundManager,
+                    weather: weather,
+                    geometry: geometry
+                )
 
                 // Gradient overlay for readability
                 LinearGradient(
@@ -331,12 +301,6 @@ struct MainClockView: View {
             }
         }
         .onAppear {
-            // Load initial background
-            loadInitialBackground()
-
-            // Start background cycling timer if in nature mode
-            setupBackgroundTimer()
-
             // Setup dim manager
             dimManager.update(settings: settings, sunrise: weather?.sunrise, sunset: weather?.sunset)
             dimTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
@@ -374,7 +338,6 @@ struct MainClockView: View {
             dockIconRenderer.startUpdating()
         }
         .onDisappear {
-            backgroundTimer?.invalidate()
             dimTimer?.invalidate()
             iCalTimer?.invalidate()
             alarmService.stopMonitoring()
@@ -387,24 +350,6 @@ struct MainClockView: View {
             if let token = windowResizeObserver {
                 NotificationCenter.default.removeObserver(token)
                 windowResizeObserver = nil
-            }
-        }
-        .onChange(of: settings.backgroundMode) { _, _ in
-            loadInitialBackground()
-            setupBackgroundTimer()
-        }
-        .onChange(of: settings.backgroundCycleInterval) { _, _ in
-            setupBackgroundTimer()
-        }
-        .onChange(of: settings.customBackgroundBookmark) { _, newBookmark in
-            if settings.backgroundMode == .custom {
-                let sunrise = weather?.sunrise ?? Constants.defaultSunriseToday()
-                let sunset = weather?.sunset ?? Constants.defaultSunsetToday()
-                backgroundManager.updateBackground(
-                    sunrise: sunrise,
-                    sunset: sunset,
-                    customBookmark: newBookmark
-                )
             }
         }
         .onThemeSettingsChange(settings: settings, dimManager: dimManager, sunrise: weather?.sunrise, sunset: weather?.sunset)
@@ -435,60 +380,6 @@ struct MainClockView: View {
         .onChange(of: settings.use24Hour) { _, newValue in
             dockIconRenderer.use24Hour = newValue
         }
-        }
-    }
-
-    private func loadInitialBackground() {
-        switch settings.backgroundMode {
-        case .nature:
-            Task {
-                currentNatureImage = await natureService.getNextImage()
-            }
-        case .timeOfDay, .custom:
-            let sunrise = weather?.sunrise ?? Constants.defaultSunriseToday()
-            let sunset = weather?.sunset ?? Constants.defaultSunsetToday()
-            backgroundManager.updateBackground(
-                sunrise: sunrise,
-                sunset: sunset,
-                customBookmark: settings.backgroundMode == .custom ? settings.customBackgroundBookmark : nil
-            )
-        }
-    }
-
-    private func setupBackgroundTimer() {
-        backgroundTimer?.invalidate()
-        backgroundTimer = nil
-
-        guard settings.backgroundMode == .nature else { return }
-
-        backgroundTimer = Timer.scheduledTimer(withTimeInterval: settings.backgroundCycleInterval, repeats: true) { _ in
-            Task {
-                let newImage = await natureService.getNextImage()
-                await MainActor.run {
-                    transitionToNewBackground(newImage)
-                }
-            }
-        }
-    }
-
-    private func transitionToNewBackground(_ newImage: NSImage?) {
-        guard let newImage = newImage else { return }
-
-        // Store current as previous
-        previousBackgroundImage = currentNatureImage
-
-        // Set new image immediately but invisible
-        currentNatureImage = newImage
-        backgroundOpacity = 0.0
-
-        // Animate fade in
-        withAnimation(.easeInOut(duration: 1.5)) {
-            backgroundOpacity = 1.0
-        }
-
-        // Clear previous after animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            previousBackgroundImage = nil
         }
     }
 
