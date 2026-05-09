@@ -96,7 +96,6 @@ struct MainClockView: View {
     @State private var natureService = NatureBackgroundService()
     @State private var currentNatureImage: NSImage?
     @State private var backgroundTimer: Timer?
-    @State private var weatherTimer: Timer?
     @State private var dimManager = DimManager()
     @State private var dimTimer: Timer?
     @State private var previousBackgroundImage: NSImage?
@@ -132,6 +131,13 @@ struct MainClockView: View {
     }
 
     var body: some View {
+        WeatherContainer(
+            settings: settings,
+            weatherService: weatherService,
+            locationService: locationService,
+            backgroundManager: backgroundManager,
+            weather: $weather
+        ) {
         GeometryReader { geometry in
             ZStack {
                 // Previous background (for crossfade)
@@ -324,16 +330,9 @@ struct MainClockView: View {
                 settings.windowFrame = window.frame
             }
         }
-        .task {
-            await loadWeather()
-        }
         .onAppear {
             // Load initial background
             loadInitialBackground()
-
-            weatherTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { _ in
-                Task { await loadWeather() }
-            }
 
             // Start background cycling timer if in nature mode
             setupBackgroundTimer()
@@ -375,7 +374,6 @@ struct MainClockView: View {
             dockIconRenderer.startUpdating()
         }
         .onDisappear {
-            weatherTimer?.invalidate()
             backgroundTimer?.invalidate()
             dimTimer?.invalidate()
             iCalTimer?.invalidate()
@@ -409,20 +407,6 @@ struct MainClockView: View {
                 )
             }
         }
-        .onChange(of: settings.manualLocationName) { _, _ in
-            // Reload weather when manual location changes
-            Task {
-                await weatherService.clearCache()
-                await loadWeather()
-            }
-        }
-        .onChange(of: settings.useAutoLocation) { _, _ in
-            // Reload weather when location mode changes
-            Task {
-                await weatherService.clearCache()
-                await loadWeather()
-            }
-        }
         .onThemeSettingsChange(settings: settings, dimManager: dimManager, sunrise: weather?.sunrise, sunset: weather?.sunset)
         .onChange(of: settings.newsTickerEnabled) { _, enabled in
             if enabled {
@@ -451,53 +435,6 @@ struct MainClockView: View {
         .onChange(of: settings.use24Hour) { _, newValue in
             dockIconRenderer.use24Hour = newValue
         }
-    }
-
-    private func loadWeather() async {
-        do {
-            var location: (lat: Double, lon: Double, name: String)
-
-            if settings.useAutoLocation {
-                locationService.requestPermission()
-                do {
-                    let clLocation = try await locationService.requestLocation()
-                    let name = try await locationService.reverseGeocode(location: clLocation)
-                    location = (clLocation.coordinate.latitude, clLocation.coordinate.longitude, name)
-                } catch {
-                    // Location failed - fall back to manual location if set, otherwise use default
-                    print("Location error: \(error). Falling back to manual/default location.")
-                    if !settings.manualLocationName.isEmpty {
-                        location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
-                    } else {
-                        // Default location
-                        location = (Constants.defaultLatitude, Constants.defaultLongitude, Constants.defaultLocationName)
-                    }
-                }
-            } else {
-                if !settings.manualLocationName.isEmpty {
-                    location = (settings.manualLatitude, settings.manualLongitude, settings.manualLocationName)
-                } else {
-                    // Default location
-                    location = (Constants.defaultLatitude, Constants.defaultLongitude, Constants.defaultLocationName)
-                }
-            }
-
-            weather = try await weatherService.fetchWeather(
-                latitude: location.lat,
-                longitude: location.lon,
-                locationName: location.name,
-                useCelsius: settings.useCelsius
-            )
-
-            if let weather = weather {
-                backgroundManager.updateBackground(
-                    sunrise: weather.sunrise,
-                    sunset: weather.sunset,
-                    customBookmark: settings.customBackgroundBookmark
-                )
-            }
-        } catch {
-            print("Weather error: \(error)")
         }
     }
 
