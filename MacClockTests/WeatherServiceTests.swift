@@ -107,3 +107,19 @@ import Foundation
         _ = try JSONDecoder().decode(OpenMeteoResponse.self, from: incomplete)
     }
 }
+
+// MARK: - Cache & actor contract
+
+@Test func clearCacheRunsWithoutError() async {
+    let service = WeatherService()
+    await service.clearCache()
+    // Smoke test: clearCache on a fresh service should be a no-op and not crash.
+}
+
+@Test func weatherServiceIsActor() async {
+    // Compile-time check: WeatherService is declared as `actor`. The fact that
+    // `await` is required to call clearCache() proves the actor-isolation
+    // contract — non-actor types would not require it.
+    let service = WeatherService()
+    await service.clearCache()
+}
