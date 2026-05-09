@@ -59,23 +59,17 @@ struct WorldClockItem: View {
     let showDayDiff: Bool
     let compact: Bool
 
-    @State private var currentTime = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
     var body: some View {
-        Group {
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in
             if compact {
-                compactLayout
+                compactLayout(currentTime: context.date)
             } else {
-                expandedLayout
+                expandedLayout(currentTime: context.date)
             }
-        }
-        .onReceive(timer) { _ in
-            currentTime = Date()
         }
     }
 
-    private var compactLayout: some View {
+    private func compactLayout(currentTime: Date) -> some View {
         VStack(alignment: .center, spacing: 2) {
             Text(clock.cityName.uppercased())
                 .font(.system(size: 10, weight: .medium))
@@ -96,7 +90,7 @@ struct WorldClockItem: View {
         .frame(minWidth: 70)
     }
 
-    private var expandedLayout: some View {
+    private func expandedLayout(currentTime: Date) -> some View {
         VStack(alignment: .trailing, spacing: 2) {
             HStack(spacing: 2) {
                 Text(clock.cityName.uppercased())
