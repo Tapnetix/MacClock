@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: macos-14
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Run tests (gate)
+        run: swift test --parallel
+
+      - name: Build .app bundle
+        run: ./build-app.sh
+
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - MacClock.app
+
+      - name: Verify signature
+        run: codesign --verify --verbose MacClock.app
+
+      - name: Zip .app
+        run: |
+          ditto -c -k --keepParent MacClock.app MacClock.app.zip
+          ls -lh MacClock.app.zip
+          shasum -a 256 MacClock.app.zip
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "MacClock $TAG" \
+            --generate-notes \
+            MacClock.app.zip
