@@ -4,6 +4,12 @@ struct ClockView: View {
     let settings: AppSettings
     var theme: ColorTheme = .classicWhite
 
+    /// Test-only override for the rendered time. When non-nil, the view
+    /// renders that fixed date instead of subscribing to TimelineView.
+    /// Used by snapshot tests to produce deterministic PNGs. Production
+    /// callers always leave this as `nil`.
+    var testDate: Date? = nil
+
     private var secondaryFontSize: CGFloat {
         settings.clockFontSize / 3.0
     }
@@ -52,43 +58,51 @@ struct ClockView: View {
     }()
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            let currentTime = context.date
-
-            VStack(spacing: 8) {
-                // Time display
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(timeString(from: currentTime))
-                        .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
-                        .foregroundStyle(theme.primaryColor)
-
-                    // AM/PM and seconds stacked vertically to the right
-                    VStack(alignment: .leading, spacing: 0) {
-                        if !settings.use24Hour {
-                            Text(Self.amPmFormatter.string(from: currentTime))
-                                .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                                .foregroundStyle(theme.primaryColor)
-                        }
-
-                        if settings.showSeconds {
-                            Text(Self.secondsFormatter.string(from: currentTime))
-                                .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
-                                .foregroundStyle(theme.primaryColor.opacity(theme.secondaryOpacity))
-                        }
-                    }
-                    .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
-                }
-
-                // Date display
-                Text(Self.dateFormatter.string(from: currentTime))
-                    .font(.system(size: dateFontSize, weight: .medium))
-                    .foregroundStyle(theme.accentColor)
-                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+        if let testDate {
+            // Test-only fixed render path. Skip TimelineView so the snapshot is deterministic.
+            clockContent(for: testDate)
+        } else {
+            TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                clockContent(for: context.date)
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Current time")
-            .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
         }
+    }
+
+    @ViewBuilder
+    private func clockContent(for currentTime: Date) -> some View {
+        VStack(spacing: 8) {
+            // Time display
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(timeString(from: currentTime))
+                    .font(.custom("DSEG7Classic-Bold", size: settings.clockFontSize))
+                    .foregroundStyle(theme.primaryColor)
+
+                // AM/PM and seconds stacked vertically to the right
+                VStack(alignment: .leading, spacing: 0) {
+                    if !settings.use24Hour {
+                        Text(Self.amPmFormatter.string(from: currentTime))
+                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
+                            .foregroundStyle(theme.primaryColor)
+                    }
+
+                    if settings.showSeconds {
+                        Text(Self.secondsFormatter.string(from: currentTime))
+                            .font(.custom("DSEG7Classic-Bold", size: secondaryFontSize))
+                            .foregroundStyle(theme.primaryColor.opacity(theme.secondaryOpacity))
+                    }
+                }
+                .alignmentGuide(.lastTextBaseline) { d in d[.lastTextBaseline] }
+            }
+
+            // Date display
+            Text(Self.dateFormatter.string(from: currentTime))
+                .font(.system(size: dateFontSize, weight: .medium))
+                .foregroundStyle(theme.accentColor)
+                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Current time")
+        .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
     }
 
     private func timeString(from date: Date) -> String {

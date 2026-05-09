@@ -20,6 +20,12 @@ struct AnalogClockView: View {
     let settings: AppSettings
     var theme: ColorTheme = .classicWhite
 
+    /// Test-only override for the rendered time. When non-nil, the view
+    /// renders that fixed date instead of subscribing to TimelineView.
+    /// Used by snapshot tests to produce deterministic PNGs. Production
+    /// callers always leave this as `nil`.
+    var testDate: Date? = nil
+
     private var dateFontSize: CGFloat {
         max(14, settings.clockFontSize / 4.8)
     }
@@ -37,7 +43,10 @@ struct AnalogClockView: View {
     }()
 
     var body: some View {
-        if settings.showSeconds {
+        if let testDate {
+            // Test-only fixed render path. Skip TimelineView so the snapshot is deterministic.
+            clockContent(for: testDate)
+        } else if settings.showSeconds {
             TimelineView(.animation) { context in
                 clockContent(for: context.date)
             }

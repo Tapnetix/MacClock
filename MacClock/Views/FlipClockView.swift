@@ -229,6 +229,12 @@ struct FlipClockView: View {
     let settings: AppSettings
     var theme: ColorTheme = .classicWhite
 
+    /// Test-only override for the rendered time. When non-nil, the view
+    /// renders that fixed date instead of subscribing to TimelineView.
+    /// Used by snapshot tests to produce deterministic PNGs. Production
+    /// callers always leave this as `nil`.
+    var testDate: Date? = nil
+
     @State private var currentTime = Date()
     @State private var previousTime = Date()
     @State private var lastSecond: Int = -1
@@ -259,61 +265,76 @@ struct FlipClockView: View {
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            let _ = updateTimes(context.date)
+        if let testDate {
+            // Test-only fixed render path. Skip TimelineView so the snapshot is deterministic.
+            // Use the same date for current and previous (no flip animation in tests).
+            flipContent(now: testDate, previous: testDate)
+        } else {
+            TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                let _ = updateTimes(context.date)
+                flipContent(now: currentTime, previous: previousTime)
+            }
+        }
+    }
 
-            GeometryReader { geometry in
-                let pairCount: CGFloat = settings.showSeconds ? 3 : 2
-                let widthPerUnit: CGFloat = 1.6
-                let totalUnits = pairCount * widthPerUnit + (pairCount - 1) * 0.3
+    @ViewBuilder
+    private func flipContent(now: Date, previous: Date) -> some View {
+        GeometryReader { geometry in
+            let pairCount: CGFloat = settings.showSeconds ? 3 : 2
+            let widthPerUnit: CGFloat = 1.6
+            let totalUnits = pairCount * widthPerUnit + (pairCount - 1) * 0.3
 
-                let maxWidthBasedSize = geometry.size.width / totalUnits
-                let maxHeightBasedSize = geometry.size.height * 0.7
+            let maxWidthBasedSize = geometry.size.width / totalUnits
+            let maxHeightBasedSize = geometry.size.height * 0.7
 
-                let desiredSize = settings.clockFontSize * 0.9
-                let digitSize = min(desiredSize, min(maxWidthBasedSize, maxHeightBasedSize))
+            let desiredSize = settings.clockFontSize * 0.9
+            let digitSize = min(desiredSize, min(maxWidthBasedSize, maxHeightBasedSize))
 
-                VStack(spacing: 16) {
-                    HStack(spacing: 0) {
-                        FlipDigitPair(
-                            value: hourString,
-                            previousValue: previousHourString,
-                            size: digitSize,
-                            theme: theme
-                        )
+            VStack(spacing: 16) {
+                HStack(spacing: 0) {
+                    FlipDigitPair(
+                        value: hourString(for: now),
+                        previousValue: hourString(for: previous),
+                        size: digitSize,
+                        theme: theme
+                    )
 
+                    FlipColon(size: digitSize, theme: theme)
+
+                    FlipDigitPair(
+                        value: Self.minuteFormatter.string(from: now),
+                        previousValue: Self.minuteFormatter.string(from: previous),
+                        size: digitSize,
+                        theme: theme
+                    )
+
+                    if settings.showSeconds {
                         FlipColon(size: digitSize, theme: theme)
 
                         FlipDigitPair(
-                            value: minuteString,
-                            previousValue: previousMinuteString,
+                            value: Self.secondFormatter.string(from: now),
+                            previousValue: Self.secondFormatter.string(from: previous),
                             size: digitSize,
                             theme: theme
                         )
-
-                        if settings.showSeconds {
-                            FlipColon(size: digitSize, theme: theme)
-
-                            FlipDigitPair(
-                                value: secondString,
-                                previousValue: previousSecondString,
-                                size: digitSize,
-                                theme: theme
-                            )
-                        }
                     }
-
-                    Text(dateString)
-                        .font(.system(size: min(dateFontSize, digitSize * 0.2), weight: .medium))
-                        .foregroundStyle(theme.accentColor)
-                        .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Current time")
-                .accessibilityValue(Self.accessibilityTimeFormatter.string(from: currentTime))
+
+                Text(Self.dateFormatter.string(from: now))
+                    .font(.system(size: min(dateFontSize, digitSize * 0.2), weight: .medium))
+                    .foregroundStyle(theme.accentColor)
+                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Current time")
+            .accessibilityValue(Self.accessibilityTimeFormatter.string(from: now))
         }
+    }
+
+    private func hourString(for date: Date) -> String {
+        let formatter = settings.use24Hour ? Self.hour24Formatter : Self.hour12Formatter
+        return formatter.string(from: date)
     }
 
     /// Called inside TimelineView closure to update previous/current time.
@@ -327,27 +348,6 @@ struct FlipClockView: View {
         }
     }
 
-    // MARK: - Current Time Strings
-
-    private var hourString: String {
-        let formatter = settings.use24Hour ? Self.hour24Formatter : Self.hour12Formatter
-        return formatter.string(from: currentTime)
-    }
-    private var minuteString: String { Self.minuteFormatter.string(from: currentTime) }
-    private var secondString: String { Self.secondFormatter.string(from: currentTime) }
-
-    // MARK: - Previous Time Strings
-
-    private var previousHourString: String {
-        let formatter = settings.use24Hour ? Self.hour24Formatter : Self.hour12Formatter
-        return formatter.string(from: previousTime)
-    }
-    private var previousMinuteString: String { Self.minuteFormatter.string(from: previousTime) }
-    private var previousSecondString: String { Self.secondFormatter.string(from: previousTime) }
-
-    // MARK: - Date String
-
-    private var dateString: String { Self.dateFormatter.string(from: currentTime) }
 }
 
 #Preview {
