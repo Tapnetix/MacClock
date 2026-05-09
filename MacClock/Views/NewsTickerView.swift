@@ -200,9 +200,12 @@ struct NewsTickerView: View {
     private func openCurrentItem() {
         guard !newsItems.isEmpty else { return }
         let index = currentIndex % newsItems.count
-        if let url = newsItems[index].link {
-            NSWorkspace.shared.open(url)
-        }
+        guard let url = newsItems[index].link else { return }
+        // Allowlist web schemes — RSS feeds may contain file:// or app-scheme URLs
+        // that would deep-link into Mail/Settings or read local files.
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else { return }
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Auto-Advance
