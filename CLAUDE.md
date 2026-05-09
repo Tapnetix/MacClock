@@ -5,20 +5,39 @@ A native macOS desktop clock app: digital/analog/flip-clock displays, weather, c
 ## Stack
 
 - **Swift 5.9, SwiftUI, macOS 14+**
-- **Swift Package Manager** (no Xcode project — `Package.swift` is authoritative)
+- **Swift Package Manager** — `Package.swift` is the source of truth for sources/resources of the app
+- **Xcode project (XcodeGen-generated)** — minimal `MacClock.xcodeproj` exists *only* to host an `XCUITest` target; it folder-references the same `MacClock/` directory SPM uses
 - **Zero external dependencies** — only Apple frameworks
-- **Swift Testing** (`@Test`, `#expect`, `@Suite`) — not XCTest
+- **Testing**: Swift Testing (`@Test`, `#expect`, `@Suite`) for unit/snapshot tests; **XCTest/XCUITest** for UI interaction tests
 - **AppKit interop** for window level/style, dock icon, NSWorkspace, audio device selection
 
 ## Commands
 
 ```bash
-swift build              # Debug build
-swift build -c release   # Release build
-swift test               # Run all 54+ tests (Swift Testing)
+swift build              # Debug build (SPM)
+swift build -c release   # Release build (SPM)
+swift test               # Run unit + snapshot tests (Swift Testing, 229+ tests)
 ./build-app.sh           # Build .app bundle (release + copy resources + Info.plist)
 swift run                # Run from terminal (sometimes useful for logs)
+
+make xcodeproj           # (Re)generate MacClock.xcodeproj from project.yml via XcodeGen
+make test-ui             # Run XCUITest suite (13 tests) via xcodebuild
 ```
+
+## Build systems
+
+This project uses **two build systems** intentionally:
+
+- **`Package.swift` (SPM)** — source of truth for the app target's sources and resources. Build with `swift build`. Run unit/snapshot tests with `swift test`.
+- **`MacClock.xcodeproj` (XcodeGen)** — generated from `project.yml` via `xcodegen generate`. Two targets: the `MacClock` app (folder-references the same `MacClock/` directory SPM uses) and `MacClockUITests` (XCUITest). Build with `xcodebuild -scheme MacClock -destination 'platform=macOS' build`. Run UI tests with `make test-ui`.
+
+The Xcode project exists because XCUITest is Xcode-only. Sources don't fork: adding a Swift file to `MacClock/` is picked up by both build systems automatically (SPM via `Package.swift`'s implicit globbing, Xcode via XcodeGen folder reference + regenerate).
+
+`MacClock.xcodeproj/` is **gitignored** — only `project.yml` is checked in. After cloning, run `make xcodeproj` (or `xcodegen generate`) to produce the project. After editing `project.yml`, regenerate.
+
+A small `Bundle.module` shim in `MacClock/Utilities/BundleCompat.swift` (guarded by `#if !SWIFT_PACKAGE`) lets code that uses `Bundle.module` for resource lookup compile under both build systems. Under SPM, the synthesised `Bundle.module` points at the resource bundle. Under Xcode, the shim aliases it to `Bundle.main`.
+
+The UITests use a `--test-mode` launch argument (handled in `MacClockApp.makeUserDefaults()`) that swaps in a throwaway `UserDefaults(suiteName: "com.tapnetix.MacClock.UITests")` and clears it on each launch, so tests never collide with the developer's saved settings.
 
 ## Layout
 
@@ -112,7 +131,16 @@ The cache file at `~/Library/Caches/<bundle-id>/icalEvents.json` is *not* covere
 
 ## Test conventions
 
-Swift Testing — `@Test func someTest() { #expect(...) }`. Test files mirror source structure. Tests run via `swift test` and are fast (whole suite < 1s). When fixing a bug, add a regression test to the corresponding `*Tests.swift` file.
+**Unit / snapshot tests** — Swift Testing — `@Test func someTest() { #expect(...) }`. Test files mirror source structure under `MacClockTests/`. Run via `swift test`; fast (whole 229-test suite < 1s). When fixing a bug, add a regression test to the corresponding `*Tests.swift` file.
+
+**UI interaction tests** — XCUITest, under `MacClockUITests/`. Three suites: `MacClockSmokeTests` (3), `SettingsUITests` (5), `AlarmUITests` (5) = 13 tests. Run via `make test-ui` or:
+
+```bash
+xcodebuild -project MacClock.xcodeproj -scheme MacClock \
+           -destination 'platform=macOS' test
+```
+
+Selectors are accessibility labels (CR-12) — buttons "Settings", "Alarms"; settings tabs "General", "Appearance", etc.; alarm-panel tabs "Alarms", "Timer", "Stopwatch". If a test fails because an element isn't found, that's usually a real accessibility regression, not test breakage. The test runner (Xcode/Terminal) needs **Accessibility permission** (System Settings → Privacy & Security → Accessibility) to interact with the UI; grant it once.
 
 ## Git
 
@@ -122,7 +150,7 @@ Swift Testing — `@Test func someTest() { #expect(...) }`. Test files mirror so
 
 ## Local-only paths (in `.gitignore`)
 
-`docs/plans/`, `docs/superpowers/`, `icon-mockups/`, `diagnose_ical.swift`, `Screenshot*.png`, `MacClock.app/`, `.build/`. These exist as working materials but never get pushed.
+`docs/plans/`, `docs/superpowers/`, `icon-mockups/`, `diagnose_ical.swift`, `Screenshot*.png`, `MacClock.app/`, `.build/`, `MacClock.xcodeproj/` (regenerate from `project.yml` via `make xcodeproj`), `DerivedData/`, `*.xcuserstate`. These exist as working materials but never get pushed.
 
 ## Common gotchas
 
