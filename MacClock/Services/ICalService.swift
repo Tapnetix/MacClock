@@ -3,46 +3,41 @@ import CoreGraphics
 
 actor ICalService {
     private let session = URLSession.standardConfigured
-    private let cacheKey = "cachedICalEvents"
-    private let cacheDateKey = "cachedICalEventsDate"
-    private let defaults = UserDefaults.standard
 
-    /// Load cached events from UserDefaults
+    /// File-backed cache for fetched iCal events. nil only if the cache
+    /// directory cannot be created — in that case we silently skip caching.
+    private let cache = Cache<CachedEventEnvelope>(filename: "icalEvents.json")
+
+    /// Wraps the events array with the date they were cached, so we can
+    /// continue the "only return cache from today" behavior after the move.
+    struct CachedEventEnvelope: Codable {
+        let cachedAt: Date
+        let events: [CalendarEvent]
+    }
+
+    /// Load cached events from disk. Returns events from today's calendar
+    /// day that haven't ended yet. Empty array if cache missing/stale/corrupt.
     nonisolated func loadCachedEvents() -> [CalendarEvent] {
-        // Check if cache is from today
-        if let cacheDate = defaults.object(forKey: cacheDateKey) as? Date {
-            let today = Calendar.current.startOfDay(for: Date())
-            let cacheDay = Calendar.current.startOfDay(for: cacheDate)
-            if cacheDay != today {
-                // Cache is stale (from a different day)
-                return []
-            }
-        } else {
-            return []
-        }
+        guard let envelope = cache?.load() else { return [] }
 
-        guard let data = defaults.data(forKey: cacheKey),
-              let events = try? JSONDecoder().decode([CalendarEvent].self, from: data) else {
-            return []
-        }
+        let today = Calendar.current.startOfDay(for: Date())
+        let cacheDay = Calendar.current.startOfDay(for: envelope.cachedAt)
+        guard cacheDay == today else { return [] }
 
-        // Filter to only return events that haven't ended yet
         let now = Date()
-        return events.filter { $0.endDate > now }
+        return envelope.events.filter { $0.endDate > now }
     }
 
-    /// Save events to cache
+    /// Save events to disk. The cache is a startup-latency optimization,
+    /// not source of truth, so write failures are logged-and-swallowed
+    /// inside Cache.save.
     nonisolated func cacheEvents(_ events: [CalendarEvent]) {
-        if let data = try? JSONEncoder().encode(events) {
-            defaults.set(data, forKey: cacheKey)
-            defaults.set(Date(), forKey: cacheDateKey)
-        }
+        cache?.save(CachedEventEnvelope(cachedAt: Date(), events: events))
     }
 
-    /// Clear the event cache (call when feed URLs change)
+    /// Clear the event cache (call when feed URLs change).
     nonisolated func clearCache() {
-        defaults.removeObject(forKey: cacheKey)
-        defaults.removeObject(forKey: cacheDateKey)
+        cache?.clear()
     }
 
     /// Fetch events from an iCal feed URL
