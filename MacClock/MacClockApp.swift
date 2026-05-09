@@ -96,8 +96,6 @@ struct MainClockView: View {
     @State private var dimManager = DimManager()
     @State private var newsService = NewsService()
     @State private var newsItems: [NewsItem] = []
-    @State private var alarmService = AlarmService()
-    @State private var showAlarmPanel = false
     @State private var showWeatherDetail = false
     @State private var dockIconRenderer = DockIconRenderer()
     @State private var windowMoveObserver: NSObjectProtocol?
@@ -115,6 +113,7 @@ struct MainClockView: View {
             backgroundManager: backgroundManager,
             weather: $weather
         ) {
+        AlarmContainer(settings: settings, theme: effectiveTheme) { showAlarmPanel in
         GeometryReader { geometry in
             ZStack {
                 BackgroundContainer(
@@ -219,7 +218,7 @@ struct MainClockView: View {
                     HStack {
                         Spacer()
                         Button {
-                            showAlarmPanel = true
+                            showAlarmPanel.wrappedValue = true
                         } label: {
                             Image(systemName: "alarm.fill")
                                 .font(.system(size: 16))
@@ -249,24 +248,8 @@ struct MainClockView: View {
                     }
                 }
 
-                // Alarm firing overlay
-                if alarmService.isAlarmFiring, let alarm = alarmService.activeAlarm {
-                    AlarmFiringView(
-                        alarm: alarm,
-                        onDismiss: {
-                            disableIfOneTime(alarm)
-                            alarmService.dismissAlarm()
-                        },
-                        onSnooze: { alarmService.snoozeAlarm() },
-                        theme: effectiveTheme,
-                        snoozeCount: alarmService.snoozeCount,
-                        maxSnoozes: 10
-                    )
-                }
         }
         }
-        .sheet(isPresented: $showAlarmPanel) {
-            AlarmPanelView(settings: settings, alarmService: alarmService)
         }
         .windowLevel(settings.windowLevel, opacity: settings.windowOpacity) { window in
             // Restore saved frame
@@ -301,23 +284,11 @@ struct MainClockView: View {
                 Task { await loadNews() }
             }
 
-            // Start alarm monitoring
-            alarmService.outputDeviceUID = settings.alarmOutputDeviceUID
-            alarmService.onAlarmDismissed = { [weak settings] alarm in
-                guard let settings else { return }
-                guard alarm.repeatDays.isEmpty else { return }
-                if let index = settings.alarms.firstIndex(where: { $0.id == alarm.id }) {
-                    settings.alarms[index].isEnabled = false
-                }
-            }
-            alarmService.startMonitoring(alarms: settings.alarms)
-
             // Start dynamic dock icon
             dockIconRenderer.use24Hour = settings.use24Hour
             dockIconRenderer.startUpdating()
         }
         .onDisappear {
-            alarmService.stopMonitoring()
             dockIconRenderer.stopUpdating()
 
             if let token = windowMoveObserver {
@@ -336,12 +307,6 @@ struct MainClockView: View {
         }
         .onChange(of: settings.newsMaxAgeDays) { _, _ in
             Task { await loadNews() }
-        }
-        .onChange(of: settings.alarms) { _, newAlarms in
-            alarmService.startMonitoring(alarms: newAlarms)
-        }
-        .onChange(of: settings.alarmOutputDeviceUID) { _, newUID in
-            alarmService.outputDeviceUID = newUID
         }
         .onChange(of: settings.use24Hour) { _, newValue in
             dockIconRenderer.use24Hour = newValue
@@ -362,10 +327,4 @@ struct MainClockView: View {
         }
     }
 
-    private func disableIfOneTime(_ alarm: Alarm) {
-        guard alarm.repeatDays.isEmpty else { return }
-        if let index = settings.alarms.firstIndex(where: { $0.id == alarm.id }) {
-            settings.alarms[index].isEnabled = false
-        }
-    }
 }
