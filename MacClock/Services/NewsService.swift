@@ -43,7 +43,7 @@ actor NewsService: NSObject, XMLParserDelegate {
 }
 
 // Separate non-actor class for XML parsing
-private class RSSParser: NSObject, XMLParserDelegate {
+class RSSParser: NSObject, XMLParserDelegate {
     private var items: [NewsItem] = []
     private var currentElement = ""
     private var currentTitle = ""
