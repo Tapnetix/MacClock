@@ -95,6 +95,21 @@ Every interactive element gets `.accessibilityLabel(...)`. Buttons get verb-styl
 
 `AppSettings` properties annotated with `@ObservationIgnored` are excluded from observation. The settings window is a separate `Window("Settings", id: "settings")` scene — opened via `openWindow(id:)`.
 
+## Schema migrations
+
+`UserDefaults` data has a version: `SchemaVersion.current` in `MacClock/Models/SchemaMigration.swift`. `MigrationRunner.run()` is called once at app startup (before `AppSettings(...)` evaluates) and walks the saved version forward to current.
+
+To add a schema change:
+
+1. Implement the migration: edit `migrateV1ToV2` (or add `migrateV2ToV3`, etc.) to read old-shape data from `UserDefaults`, transform it, and write the new shape. Migrations must be idempotent.
+2. Bump `SchemaVersion.current`.
+3. If you added a new function, register it in `MigrationRunner.migration(from:)`.
+4. Add a test in `SchemaMigrationTests` that pre-populates the old shape, runs the runner, and asserts the new shape.
+
+Do *not* bump `SchemaVersion.current` for cosmetic reasons. The version is tied to *data shape*, not app version.
+
+The cache file at `~/Library/Caches/<bundle-id>/icalEvents.json` is *not* covered by this versioning — it's transient, and the `Cache<T>` helper deletes it on decode failure rather than migrating.
+
 ## Test conventions
 
 Swift Testing — `@Test func someTest() { #expect(...) }`. Test files mirror source structure. Tests run via `swift test` and are fast (whole suite < 1s). When fixing a bug, add a regression test to the corresponding `*Tests.swift` file.
