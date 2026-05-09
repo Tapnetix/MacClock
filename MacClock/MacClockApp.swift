@@ -16,9 +16,49 @@ struct MacClockApp: App {
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        Self.migrateFromLegacyBundleID()
         runMigrations()
         ICalService.purgeLegacyUserDefaultsCache()
         registerFonts()
+    }
+
+    /// One-shot migration: when the app's CFBundleIdentifier changed from
+    /// `com.local.MacClock` to `com.tapnetix.MacClock`, macOS started
+    /// reading from a fresh empty preferences plist and the user's saved
+    /// alarms/feeds/themes/window frame appeared "lost". They were never
+    /// lost — just inaccessible under the new bundle ID. This copies them
+    /// across on first launch and sets a flag so it never runs again.
+    private static func migrateFromLegacyBundleID() {
+        let flag = "bundleIDMigratedFromLocal_v1"
+        let standard = UserDefaults.standard
+        guard !standard.bool(forKey: flag) else { return }
+
+        let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "MacClock",
+                            category: "Migration")
+
+        // `persistentDomain(forName:)` returns only the keys actually written
+        // to the legacy app's own plist file — not the merged global view that
+        // `dictionaryRepresentation()` would give us (which includes
+        // NSGlobalDomain system keys we don't want to copy).
+        guard let legacyDict = standard.persistentDomain(forName: "com.local.MacClock"),
+              !legacyDict.isEmpty else {
+            standard.set(true, forKey: flag)
+            return
+        }
+
+        // Don't clobber control keys owned by the new app's own startup logic.
+        let preserve: Set<String> = [
+            "appSettingsSchemaVersion",
+            "iCalLegacyCachePurged_v1",
+            flag,
+        ]
+        var copied = 0
+        for (key, value) in legacyDict where !preserve.contains(key) {
+            standard.set(value, forKey: key)
+            copied += 1
+        }
+        standard.set(true, forKey: flag)
+        logger.info("Migrated \(copied, privacy: .public) keys from com.local.MacClock")
     }
 
     /// Returns a `UserDefaults` instance for `AppSettings` to back its

@@ -70,12 +70,19 @@ struct ClockSnapshotTests {
 }
 
 extension AppSettings {
-    /// Builds a deterministic AppSettings backed by an isolated UserDefaults
-    /// suite. Each call gets its own suite so tests don't pollute each other.
+    /// Single shared suite used by every snapshot fixture. Cleared at the
+    /// start of each call so tests don't pollute each other and — critically —
+    /// don't leave a fresh `~/Library/Preferences/macclock.snapshot.*.plist`
+    /// behind for every test run. Snapshot tests are serialised on `@MainActor`
+    /// so reusing one suite is safe.
+    private static let snapshotSuiteName = "macclock.snapshot.shared"
+
+    /// Builds a deterministic AppSettings backed by a shared, pre-cleared
+    /// UserDefaults suite. Used only by snapshot tests.
     @MainActor
     static func snapshotFixture(configure: (AppSettings) -> Void = { _ in }) -> AppSettings {
-        let suiteName = "macclock.snapshot.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        UserDefaults().removePersistentDomain(forName: snapshotSuiteName)
+        let defaults = UserDefaults(suiteName: snapshotSuiteName) ?? .standard
         let settings = AppSettings(defaults: defaults)
         // Sensible defaults for snapshots — small enough to fit a 480×240 canvas.
         settings.clockFontSize = 80
