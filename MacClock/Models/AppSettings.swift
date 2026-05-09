@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import AppKit
+import OSLog
 
 enum WindowLevel: String, CaseIterable {
     case normal = "Normal"
@@ -39,6 +40,7 @@ enum NewsTickerStyle: String, CaseIterable {
 @Observable
 final class AppSettings {
     private let defaults: UserDefaults
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "MacClock", category: "AppSettings")
 
     var use24Hour: Bool {
         didSet { defaults.set(use24Hour, forKey: "use24Hour") }
@@ -335,22 +337,12 @@ final class AppSettings {
         self.autoThemeMode = AutoDimMode(rawValue: defaults.string(forKey: "autoThemeMode") ?? "") ?? .sunriseSunset
         self.worldClocksEnabled = defaults.bool(forKey: "worldClocksEnabled")
         self.worldClocksPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "worldClocksPosition") ?? "") ?? .bottom
-        if let data = defaults.data(forKey: "worldClocks"),
-           let clocks = try? JSONDecoder().decode([WorldClock].self, from: data) {
-            self.worldClocks = clocks
-        } else {
-            self.worldClocks = []
-        }
+        self.worldClocks = Self.decodeOrDefault([WorldClock].self, key: "worldClocks", defaults: defaults, fallback: [])
         self.showTimezoneAbbreviation = defaults.object(forKey: "showTimezoneAbbreviation") as? Bool ?? true
         self.showDayDifference = defaults.object(forKey: "showDayDifference") as? Bool ?? true
         self.newsTickerEnabled = defaults.bool(forKey: "newsTickerEnabled")
         self.newsTickerStyle = NewsTickerStyle(rawValue: defaults.string(forKey: "newsTickerStyle") ?? "") ?? .scrolling
-        if let data = defaults.data(forKey: "newsFeeds"),
-           let feeds = try? JSONDecoder().decode([NewsFeed].self, from: data) {
-            self.newsFeeds = feeds
-        } else {
-            self.newsFeeds = NewsFeed.builtInFeeds
-        }
+        self.newsFeeds = Self.decodeOrDefault([NewsFeed].self, key: "newsFeeds", defaults: defaults, fallback: NewsFeed.builtInFeeds)
         self.newsRefreshInterval = defaults.object(forKey: "newsRefreshInterval") as? Double ?? 15.0
         self.newsScrollSpeed = defaults.object(forKey: "newsScrollSpeed") as? Double ?? 50.0
         self.newsRotateInterval = defaults.object(forKey: "newsRotateInterval") as? Double ?? 10.0
@@ -360,18 +352,8 @@ final class AppSettings {
         self.calendarShowAgenda = defaults.bool(forKey: "calendarShowAgenda")
         self.calendarAgendaPosition = WorldClocksPosition(rawValue: defaults.string(forKey: "calendarAgendaPosition") ?? "") ?? .side
         self.selectedCalendarIDs = defaults.stringArray(forKey: "selectedCalendarIDs") ?? []
-        if let data = defaults.data(forKey: "iCalFeeds"),
-           let feeds = try? JSONDecoder().decode([ICalFeed].self, from: data) {
-            self.iCalFeeds = feeds
-        } else {
-            self.iCalFeeds = []
-        }
-        if let data = defaults.data(forKey: "alarms"),
-           let loadedAlarms = try? JSONDecoder().decode([Alarm].self, from: data) {
-            self.alarms = loadedAlarms
-        } else {
-            self.alarms = []
-        }
+        self.iCalFeeds = Self.decodeOrDefault([ICalFeed].self, key: "iCalFeeds", defaults: defaults, fallback: [])
+        self.alarms = Self.decodeOrDefault([Alarm].self, key: "alarms", defaults: defaults, fallback: [])
         self.alarmOutputDeviceUID = defaults.string(forKey: "alarmOutputDeviceUID") ?? ""
 
         // Migration: build a bookmark from a legacy raw path so existing
@@ -388,6 +370,24 @@ final class AppSettings {
                 self.customBackgroundBookmark = data
                 defaults.set(data, forKey: "customBackgroundBookmark")
             }
+        }
+    }
+
+    /// Decodes a Codable value from UserDefaults. On decode failure, logs
+    /// the error and returns `fallback`. A logged decode failure usually
+    /// means a missed schema migration — see `SchemaMigration.swift`.
+    private static func decodeOrDefault<T: Decodable>(
+        _ type: T.Type,
+        key: String,
+        defaults: UserDefaults,
+        fallback: T
+    ) -> T {
+        guard let data = defaults.data(forKey: key) else { return fallback }
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            logger.error("AppSettings decode failed for \(key, privacy: .public): \(String(describing: error), privacy: .public). Falling back to default — likely a missed schema migration.")
+            return fallback
         }
     }
 }
