@@ -120,24 +120,24 @@ struct MacClockApp: App {
     }
 
     private func registerFonts() {
-        // For the bundled .app, fonts live at Contents/Resources/Fonts (placed
-        // there by build-app.sh). For `swift run` / `swift test` they live in
-        // the SPM-generated MacClock_MacClock.bundle (Bundle.module). Try the
-        // .app location first; fall back to Bundle.module so dev workflows
-        // continue to work.
-        let candidates: [Bundle] = [.main, .module]
-        for bundle in candidates {
-            guard let fontsURL = bundle.url(forResource: "Fonts", withExtension: nil),
-                  let fontURLs = try? FileManager.default.contentsOfDirectory(
-                    at: fontsURL,
-                    includingPropertiesForKeys: nil
-                  ).filter({ $0.pathExtension == "ttf" }),
-                  !fontURLs.isEmpty
-            else { continue }
-            for fontURL in fontURLs {
-                CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
-            }
-            return
+        // Look for fonts in `Contents/Resources/Fonts` of the running bundle.
+        // build-app.sh places them there; for `swift run` they're not present
+        // and the app falls back to system fonts (DSEG7 just won't render).
+        //
+        // Important: do NOT use `Bundle.module` here. SwiftPM's auto-generated
+        // accessor is a lazy `static let` that calls `fatalError` if it can't
+        // find the resource bundle. In the bundled .app the SPM bundle isn't
+        // present (we copied resources flat into Contents/Resources/), so any
+        // reference to `Bundle.module` — even just to check its url(forResource:)
+        // — crashes the app on first font registration.
+        guard let fontsURL = Bundle.main.url(forResource: "Fonts", withExtension: nil),
+              let fontURLs = try? FileManager.default.contentsOfDirectory(
+                at: fontsURL,
+                includingPropertiesForKeys: nil
+              ).filter({ $0.pathExtension == "ttf" })
+        else { return }
+        for fontURL in fontURLs {
+            CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
         }
     }
 }
