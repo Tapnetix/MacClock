@@ -42,31 +42,14 @@ jobs:
       - name: Verify signature
         run: codesign --verify --verbose MacClock.app
 
-      - name: Build DMG
+      - name: Build .pkg installer
+        run: ./build-pkg.sh
+
+      - name: Inspect package
         run: |
-          STAGING=/tmp/macclock-dmg-staging
-          rm -rf "$STAGING"
-          mkdir -p "$STAGING"
-          cp -R MacClock.app "$STAGING/"
-          ln -s /Applications "$STAGING/Applications"
-          # Quarantine-bypass install helper + a plain-text walkthrough.
-          # Without notarisation (we don't have an Apple Developer ID), users
-          # need to strip the quarantine flag before macOS will run the app.
-          # The helper does it for them in one double-click.
-          cp ".github/dmg/Install MacClock.command" "$STAGING/"
-          cp ".github/dmg/READ ME — Install Instructions.txt" "$STAGING/"
-          chmod +x "$STAGING/Install MacClock.command"
-
-          hdiutil create -volname "MacClock" \
-            -srcfolder "$STAGING" \
-            -ov \
-            -format UDZO \
-            -fs HFS+ \
-            MacClock.dmg
-
-          hdiutil verify MacClock.dmg
-          ls -lh MacClock.dmg
-          shasum -a 256 MacClock.dmg
+          ls -lh MacClock-*.pkg
+          shasum -a 256 MacClock-*.pkg
+          /usr/sbin/installer -pkginfo -pkg MacClock-*.pkg
 
       - name: Create release
         env:
@@ -74,8 +57,9 @@ jobs:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
+          PKG_FILE=$(ls MacClock-*.pkg | head -1)
           gh release create "$TAG" \
             --repo "$REPO" \
             --title "MacClock $TAG" \
             --generate-notes \
-            MacClock.dmg
+            "$PKG_FILE"

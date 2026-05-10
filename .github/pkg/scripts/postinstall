@@ -1,0 +1,17 @@
+#!/bin/bash
+# Belt-and-suspenders cleanup that runs after the Installer copies
+# MacClock.app into /Applications. The Installer process is privileged
+# and (unlike Finder drag-drop) doesn't propagate the com.apple.quarantine
+# extended attribute — but if anything ever ends up there we strip it
+# here so Gatekeeper allows the (ad-hoc-signed, non-notarised) app to
+# launch directly.
+
+set -euo pipefail
+
+INSTALLED="/Applications/MacClock.app"
+
+if [ -d "$INSTALLED" ]; then
+    /usr/bin/xattr -cr "$INSTALLED" 2>/dev/null || true
+fi
+
+exit 0
