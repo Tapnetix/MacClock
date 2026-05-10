@@ -44,13 +44,18 @@ jobs:
 
       - name: Build DMG
         run: |
-          # Stage MacClock.app + a /Applications symlink so the DMG opens with
-          # the standard drag-to-install layout.
           STAGING=/tmp/macclock-dmg-staging
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
           cp -R MacClock.app "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
+          # Quarantine-bypass install helper + a plain-text walkthrough.
+          # Without notarisation (we don't have an Apple Developer ID), users
+          # need to strip the quarantine flag before macOS will run the app.
+          # The helper does it for them in one double-click.
+          cp ".github/dmg/Install MacClock.command" "$STAGING/"
+          cp ".github/dmg/READ ME — Install Instructions.txt" "$STAGING/"
+          chmod +x "$STAGING/Install MacClock.command"
 
           hdiutil create -volname "MacClock" \
             -srcfolder "$STAGING" \

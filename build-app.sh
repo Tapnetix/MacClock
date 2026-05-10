@@ -18,14 +18,24 @@ mkdir -p "$RESOURCES_DIR"
 # Copy executable
 cp ".build/release/$APP_NAME" "$MACOS_DIR/"
 
-# Copy resources from the build (SPM bundle)
-if [ -d ".build/release/MacClock_MacClock.bundle/Contents/Resources" ]; then
-    cp -R ".build/release/MacClock_MacClock.bundle/Contents/Resources/"* "$RESOURCES_DIR/"
+# Copy the SPM-generated resource bundle as a whole into Contents/Resources/.
+# `Bundle.module` (used by MacClockApp.registerFonts and any future SPM
+# resource lookups) searches relative to the main bundle's Resource URL —
+# so MacClock_MacClock.bundle MUST live at Contents/Resources/, not have
+# its contents flattened into Contents/Resources/.
+SPM_BUNDLE=".build/release/MacClock_MacClock.bundle"
+if [ -d "$SPM_BUNDLE" ]; then
+    cp -R "$SPM_BUNDLE" "$RESOURCES_DIR/"
+else
+    echo "ERROR: SPM resource bundle not found at $SPM_BUNDLE" >&2
+    exit 1
 fi
 
-# Also copy from source if needed
-if [ -d "MacClock/Resources" ]; then
-    cp -R "MacClock/Resources/"* "$RESOURCES_DIR/"
+# Copy AppIcon (not part of the SPM resource bundle — referenced directly
+# from Info.plist via CFBundleIconFile, so it lives at Contents/Resources/
+# alongside the SPM bundle).
+if [ -f "MacClock/Resources/AppIcon.icns" ]; then
+    cp "MacClock/Resources/AppIcon.icns" "$RESOURCES_DIR/"
 fi
 
 # Copy authoritative Info.plist (single source of truth in MacClock/)

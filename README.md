@@ -29,6 +29,15 @@ Digital, analog, and split-flap clock styles. Live weather. Calendar countdown a
 
 ## Install
 
+### Pre-built DMG (recommended)
+
+Download the latest `MacClock.dmg` from the [Releases page](https://github.com/Tapnetix/MacClock/releases/latest). Mount the DMG, then:
+
+- **Easy path:** Double-click **`Install MacClock.command`** inside the DMG. It copies the app to `/Applications`, removes the macOS quarantine flag, and launches the app. macOS will show a one-time security prompt the first time you run the script — click **Open** / **Allow**.
+- **Manual path:** Drag `MacClock.app` to the `Applications` shortcut, then run `xattr -cr /Applications/MacClock.app` in Terminal to clear the quarantine flag, then double-click MacClock.
+
+The quarantine step is necessary because the build is *ad-hoc signed* (no paid Apple Developer ID for notarisation). macOS Gatekeeper blocks ad-hoc apps from quarantined downloads — the `xattr -cr` removes that flag. It's a one-time step per install.
+
 ### Build from source
 
 ```bash
@@ -38,7 +47,7 @@ cd MacClock
 open MacClock.app
 ```
 
-`./build-app.sh` produces `MacClock.app` in the repo root. Drag it into `/Applications` if you want it permanently.
+`./build-app.sh` produces `MacClock.app` in the repo root. Locally-built apps don't get quarantined and launch directly.
 
 ### Run from Swift PM (developer mode)
 
