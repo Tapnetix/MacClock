@@ -42,11 +42,26 @@ jobs:
       - name: Verify signature
         run: codesign --verify --verbose MacClock.app
 
-      - name: Zip .app
+      - name: Build DMG
         run: |
-          ditto -c -k --keepParent MacClock.app MacClock.app.zip
-          ls -lh MacClock.app.zip
-          shasum -a 256 MacClock.app.zip
+          # Stage MacClock.app + a /Applications symlink so the DMG opens with
+          # the standard drag-to-install layout.
+          STAGING=/tmp/macclock-dmg-staging
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          cp -R MacClock.app "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          hdiutil create -volname "MacClock" \
+            -srcfolder "$STAGING" \
+            -ov \
+            -format UDZO \
+            -fs HFS+ \
+            MacClock.dmg
+
+          hdiutil verify MacClock.dmg
+          ls -lh MacClock.dmg
+          shasum -a 256 MacClock.dmg
 
       - name: Create release
         env:
@@ -58,4 +73,4 @@ jobs:
             --repo "$REPO" \
             --title "MacClock $TAG" \
             --generate-notes \
-            MacClock.app.zip
+            MacClock.dmg
