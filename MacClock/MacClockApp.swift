@@ -120,16 +120,24 @@ struct MacClockApp: App {
     }
 
     private func registerFonts() {
-        guard let fontsURL = Bundle.module.url(forResource: "Fonts", withExtension: nil),
-              let fontURLs = try? FileManager.default.contentsOfDirectory(
-                at: fontsURL,
-                includingPropertiesForKeys: nil
-              ).filter({ $0.pathExtension == "ttf" }) else {
+        // For the bundled .app, fonts live at Contents/Resources/Fonts (placed
+        // there by build-app.sh). For `swift run` / `swift test` they live in
+        // the SPM-generated MacClock_MacClock.bundle (Bundle.module). Try the
+        // .app location first; fall back to Bundle.module so dev workflows
+        // continue to work.
+        let candidates: [Bundle] = [.main, .module]
+        for bundle in candidates {
+            guard let fontsURL = bundle.url(forResource: "Fonts", withExtension: nil),
+                  let fontURLs = try? FileManager.default.contentsOfDirectory(
+                    at: fontsURL,
+                    includingPropertiesForKeys: nil
+                  ).filter({ $0.pathExtension == "ttf" }),
+                  !fontURLs.isEmpty
+            else { continue }
+            for fontURL in fontURLs {
+                CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
+            }
             return
-        }
-
-        for fontURL in fontURLs {
-            CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
         }
     }
 }

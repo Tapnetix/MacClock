@@ -18,23 +18,27 @@ mkdir -p "$RESOURCES_DIR"
 # Copy executable
 cp ".build/release/$APP_NAME" "$MACOS_DIR/"
 
-# Copy the SPM-generated resource bundle to the .app root (NOT
-# Contents/Resources/). SwiftPM's resource_bundle_accessor.swift looks for
-# it via `Bundle.main.bundleURL.appendingPathComponent("MacClock_MacClock.bundle")`,
-# which resolves to MacClock.app/MacClock_MacClock.bundle. If it's anywhere
-# else (including the more conventional Contents/Resources/), Bundle.module
-# raises a fatalError on first call and the app crashes immediately.
+# Copy the SPM-bundled resources (Backgrounds, Fonts) directly into
+# Contents/Resources/. The runtime accessor in MacClockApp.registerFonts
+# checks Bundle.main first, so this is the preferred .app layout. We
+# deliberately do NOT copy MacClock_MacClock.bundle into the .app root —
+# that's where SwiftPM's resource_bundle_accessor.swift expects it, but
+# it conflicts with codesign ("unsealed contents present in the bundle
+# root"). Bundle.module is only used as a fallback in dev workflows.
 SPM_BUNDLE=".build/release/MacClock_MacClock.bundle"
-if [ -d "$SPM_BUNDLE" ]; then
-    cp -R "$SPM_BUNDLE" "$APP_DIR/"
-else
+if [ ! -d "$SPM_BUNDLE" ]; then
     echo "ERROR: SPM resource bundle not found at $SPM_BUNDLE" >&2
     exit 1
 fi
+for sub in Backgrounds Fonts; do
+    if [ -d "$SPM_BUNDLE/$sub" ]; then
+        cp -R "$SPM_BUNDLE/$sub" "$RESOURCES_DIR/"
+    fi
+done
 
-# Copy AppIcon (not part of the SPM resource bundle — referenced directly
-# from Info.plist via CFBundleIconFile, so it lives at Contents/Resources/
-# alongside the SPM bundle).
+# Copy AppIcon (not part of the SPM resource bundle — referenced from
+# Info.plist via CFBundleIconFile and read by AppKit, which uses
+# Bundle.main).
 if [ -f "MacClock/Resources/AppIcon.icns" ]; then
     cp "MacClock/Resources/AppIcon.icns" "$RESOURCES_DIR/"
 fi
