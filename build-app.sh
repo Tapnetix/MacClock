@@ -18,14 +18,15 @@ mkdir -p "$RESOURCES_DIR"
 # Copy executable
 cp ".build/release/$APP_NAME" "$MACOS_DIR/"
 
-# Copy the SPM-generated resource bundle as a whole into Contents/Resources/.
-# `Bundle.module` (used by MacClockApp.registerFonts and any future SPM
-# resource lookups) searches relative to the main bundle's Resource URL —
-# so MacClock_MacClock.bundle MUST live at Contents/Resources/, not have
-# its contents flattened into Contents/Resources/.
+# Copy the SPM-generated resource bundle to the .app root (NOT
+# Contents/Resources/). SwiftPM's resource_bundle_accessor.swift looks for
+# it via `Bundle.main.bundleURL.appendingPathComponent("MacClock_MacClock.bundle")`,
+# which resolves to MacClock.app/MacClock_MacClock.bundle. If it's anywhere
+# else (including the more conventional Contents/Resources/), Bundle.module
+# raises a fatalError on first call and the app crashes immediately.
 SPM_BUNDLE=".build/release/MacClock_MacClock.bundle"
 if [ -d "$SPM_BUNDLE" ]; then
-    cp -R "$SPM_BUNDLE" "$RESOURCES_DIR/"
+    cp -R "$SPM_BUNDLE" "$APP_DIR/"
 else
     echo "ERROR: SPM resource bundle not found at $SPM_BUNDLE" >&2
     exit 1
